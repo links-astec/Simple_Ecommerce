@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-
+from .views import health
 urlpatterns = [
     # Public
     path('categories/', views.CategoryListView.as_view(), name='category-list'),
@@ -21,4 +21,6 @@ urlpatterns = [
 
     # Admin – product images
     path('product-images/', views.ProductImageUploadView.as_view(), name='product-image-upload'),
+    path("health/", health),
+
 ]

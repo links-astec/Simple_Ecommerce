@@ -317,7 +317,10 @@ With love, Bel's Haven 🌿
                   from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[order.customer_email], fail_silently=True)
     except Exception:
         pass
+from django.http import JsonResponse
 
+def health(request):
+    return JsonResponse({"status": "ok"})
 
 def _send_admin_notification(order):
     notify_email = getattr(settings, 'NOTIFY_EMAIL', None) or getattr(settings, 'ADMIN_EMAIL', None)
