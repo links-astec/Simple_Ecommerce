@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Eye, EyeOff, LogOut,
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
-  ChevronDown, Clock, Truck, AlertCircle, RefreshCw, Sparkles
+  Clock, AlertCircle, RefreshCw, Sparkles
 } from 'lucide-react';
 import API from '../api';
 import AiAssistantTab from './AiAssistantTab';
@@ -10,13 +10,7 @@ import './AdminPage.css';
 
 const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'belshaven2024';
 
-const NIGERIAN_STATES = [
-  'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
-  'Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo',
-  'Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa',
-  'Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba',
-  'Yobe','Zamfara'
-];
+
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {

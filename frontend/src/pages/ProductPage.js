@@ -51,7 +51,7 @@ export default function ProductPage() {
   };
 
   const totalPrice = parseFloat(product.price) * qty;
-  const shippingFee = isPreorder ? 0 : parseFloat(product.shipping_fee || 0);
+
 
   return (
     <div className="product-page">

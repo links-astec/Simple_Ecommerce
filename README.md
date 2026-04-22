@@ -1,3 +1,27 @@
+#
+---
+
+## Deploying Django Backend to Render
+
+1. Make sure your backend/.env is complete and contains all secrets (never commit it).
+2. Push your code to GitHub.
+3. Go to https://dashboard.render.com and create a new Web Service, connecting your repo.
+4. Set the build command to:
+   ```
+   pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
+   ```
+5. Set the start command to:
+   ```
+   gunicorn bels_haven.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+   ```
+6. Add all environment variables from backend/.env to the Render dashboard (or use render.yaml for auto-sync).
+7. Static files are handled by collectstatic and served from backend/staticfiles.
+8. Media files are persisted using a Render disk (see render.yaml).
+9. For production, use a remote PostgreSQL database (e.g., Render PostgreSQL add-on, Supabase, Neon, etc.) and update DATABASES in settings.py accordingly.
+
+**Note:**
+- For large-scale production, consider using AWS S3 or Cloudinary for media files.
+- Always keep your .env and secrets out of git.
 # Bel's Haven 🖤✨
 > A luxury e-commerce platform for fashion, beauty & accessories
 
