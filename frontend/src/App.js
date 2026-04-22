@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './CartContext';
@@ -13,11 +13,59 @@ import PaymentVerifyPage from './pages/PaymentVerifyPage';
 import OrderConfirmPage from './pages/OrderConfirmPage';
 import AdminPage from './pages/AdminPage';
 
+function RouteMetadata() {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/manage');
+
+  useEffect(() => {
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    const description = document.querySelector('meta[name="description"]');
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+
+    if (manifestLink) {
+      manifestLink.setAttribute('href', isAdmin ? '/manage.webmanifest' : '/manifest.json');
+    }
+    if (themeColor) {
+      themeColor.setAttribute('content', isAdmin ? '#111111' : '#b8892a');
+    }
+    if (appleTitle) {
+      appleTitle.setAttribute('content', isAdmin ? 'Bel\'s Haven Admin' : 'Bel\'s Haven');
+    }
+    if (description) {
+      description.setAttribute(
+        'content',
+        isAdmin
+          ? 'Bel\'s Haven admin dashboard for managing products, categories, and orders.'
+          : 'Bel\'s Haven - Curated fashion, beauty & accessories delivered with love.'
+      );
+    }
+    if (ogTitle) {
+      ogTitle.setAttribute('content', isAdmin ? 'Bel\'s Haven Admin' : 'Bel\'s Haven');
+    }
+    if (ogDescription) {
+      ogDescription.setAttribute(
+        'content',
+        isAdmin
+          ? 'Manage products, categories, and orders from the Bel\'s Haven dashboard.'
+          : 'Curated fashion, beauty & accessories.'
+      );
+    }
+
+    document.title = isAdmin ? 'Bel\'s Haven Admin' : 'Bel\'s Haven';
+  }, [isAdmin]);
+
+  return null;
+}
+
 function Layout() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/manage');
   return (
     <>
+      <RouteMetadata />
       {!isAdmin && <Navbar />}
       <main>
         <Routes>

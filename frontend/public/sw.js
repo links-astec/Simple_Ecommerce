@@ -1,9 +1,9 @@
 const CACHE = 'bels-haven-v1';
 const STATIC = [
   '/',
-  '/static/js/main.chunk.js',
-  '/static/js/bundle.js',
+  '/manage',
   '/manifest.json',
+  '/manage.webmanifest',
 ];
 
 self.addEventListener('install', e => {
