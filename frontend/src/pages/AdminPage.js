@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Package, Plus, Edit3, Trash2, Eye, EyeOff, LogOut,
+  Package, Plus, Edit3, Trash2, Eye, EyeOff, LogOut, Menu,
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
   Clock, AlertCircle, RefreshCw, Sparkles
 } from 'lucide-react';
@@ -58,12 +58,31 @@ function LoginScreen({ onLogin }) {
 export default function AdminPage() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('bh_admin') === '1');
   const [tab, setTab] = useState('products');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [tab]);
 
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
 
   return (
     <div className="admin-page">
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${menuOpen ? 'admin-sidebar--open' : ''}`}>
+        <div className="admin-mobile-bar">
+          <button
+            className="admin-mobile-bar__toggle"
+            onClick={() => setMenuOpen(open => !open)}
+            aria-label={menuOpen ? 'Close admin menu' : 'Open admin menu'}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          <div className="admin-mobile-bar__title">
+            <p>Admin Dashboard</p>
+            <h2>Bel's Haven</h2>
+          </div>
+        </div>
         <div className="admin-sidebar__logo">
           <h2>Bel's Haven</h2>
           <p>Admin Dashboard</p>
