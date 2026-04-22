@@ -6,8 +6,6 @@ import './AiAssistantTab.css';
 const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY;
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 async function uploadImage(file) {
   const fd = new FormData();
   fd.append('image', file);
@@ -38,7 +36,6 @@ async function fetchProducts() {
   return res.data.results || res.data || [];
 }
 
-// Convert image file to base64 for Groq vision
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -48,16 +45,14 @@ function fileToBase64(file) {
   });
 }
 
-// ── System prompt ─────────────────────────────────────────────────────────────
-
 function buildSystemPrompt(categories, products) {
   return `You are Bel's Haven AI Store Assistant. You help the store owner manage her online shop effortlessly.
 
-The store is called "Bel's Haven" — a luxury Ghanaian e-commerce store selling fashion, beauty, accessories, and general goods. Currency is GHS (Ghana Cedis, symbol GH₵).
+The store is called "Bel's Haven" - a luxury Ghanaian e-commerce store selling fashion, beauty, accessories, and general goods. Currency is GHS (Ghana Cedis).
 
 CURRENT STORE DATA:
-Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, slug: c.slug })))}
-Products (slugs): ${JSON.stringify(products.map(p => ({ name: p.name, slug: p.slug, type: p.product_type, price: p.price })))}
+Categories: ${JSON.stringify(categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug })))}
+Products (slugs): ${JSON.stringify(products.map((p) => ({ name: p.name, slug: p.slug, type: p.product_type, price: p.price })))}
 
 YOUR CAPABILITIES:
 You can create products, update products, and answer questions about the store.
@@ -109,13 +104,11 @@ RULES:
 - Always respond with valid JSON in the \`\`\`json block PLUS a friendly "message" field
 - If no action needed (just a question), return: {"actions": [], "message": "your answer"}
 - Slugs must be lowercase, hyphens only, no spaces
-- Be warm, friendly and supportive — she's a small business owner!
+- Be warm, friendly and supportive - she's a small business owner!
 - If something is unclear, ask for clarification in the message field with empty actions
 - Infer product type from context: "preorder", "coming soon", "not yet available" = preorder
 - If she pastes multiple products at once, create multiple actions`;
 }
-
-// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function AiAssistantTab() {
   const [messages, setMessages] = useState([
@@ -124,17 +117,17 @@ export default function AiAssistantTab() {
       content: null,
       parsed: {
         actions: [],
-        message: "Hi! 👋 I'm your store assistant. You can drop product images here, paste descriptions and prices, and I'll create everything for you automatically. You can also ask me to make changes like *\"update the price of the silk dress to GH₵200\"* or *\"mark the ankara bag as a preorder\"*. What would you like to do?",
+        message: 'Hi! I\'m your store assistant. You can drop product images here, paste descriptions and prices, and I\'ll create everything for you automatically. You can also ask me to make changes like *"update the price of the silk dress to GHS 200"* or *"mark the ankara bag as a preorder"*. What would you like to do?',
       },
       status: null,
     }
   ]);
   const [input, setInput] = useState('');
-  const [images, setImages] = useState([]); // { file, preview, name }
+  const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [history, setHistory] = useState([]); // Groq message history
+  const [history, setHistory] = useState([]);
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -149,13 +142,13 @@ export default function AiAssistantTab() {
 
   const handleFiles = (files) => {
     const newImgs = Array.from(files)
-      .filter(f => f.type.startsWith('image/'))
-      .map(f => ({ file: f, preview: URL.createObjectURL(f), name: f.name }));
-    setImages(prev => [...prev, ...newImgs]);
+      .filter((f) => f.type.startsWith('image/'))
+      .map((f) => ({ file: f, preview: URL.createObjectURL(f), name: f.name }));
+    setImages((prev) => [...prev, ...newImgs]);
   };
 
   const removeImage = (i) => {
-    setImages(prev => prev.filter((_, idx) => idx !== i));
+    setImages((prev) => prev.filter((_, idx) => idx !== i));
   };
 
   const handleDrop = (e) => {
@@ -163,10 +156,46 @@ export default function AiAssistantTab() {
     handleFiles(e.dataTransfer.files);
   };
 
+  const addMessage = (role, content, parsed, status, imgs = []) => {
+    setMessages((prev) => [...prev, { role, content, parsed, status, images: imgs, id: Date.now() }]);
+  };
+
+  const executeActions = async (actions, uploadedImages, msgId) => {
+    const results = [];
+
+    for (const action of actions) {
+      try {
+        if (action.type === 'create_product') {
+          const productData = { ...action.data };
+          const imageIndex = productData.image_index;
+          delete productData.image_index;
+
+          if (typeof imageIndex === 'number' && uploadedImages[imageIndex]) {
+            const imageId = await uploadImage(uploadedImages[imageIndex].file);
+            productData.images = [imageId];
+          }
+
+          const created = await createProduct(productData);
+          results.push({ action: 'created', name: created.name || productData.name, success: true });
+        } else if (action.type === 'update_product') {
+          const updated = await updateProductBySlug(action.slug, action.data);
+          results.push({ action: 'updated', name: updated.name || action.slug, success: true });
+        }
+      } catch (err) {
+        results.push({ action: action.type, name: action.data?.name || action.slug, success: false, error: err.message });
+      }
+    }
+
+    setMessages((prev) => prev.map((m) => {
+      if (m.id === msgId) return { ...m, status: 'done', results };
+      return m;
+    }));
+  };
+
   const send = async () => {
     if (!input.trim() && images.length === 0) return;
     if (!GROQ_API_KEY) {
-      addMessage('assistant', null, { actions: [], message: '⚠️ No Groq API key found. Please add REACT_APP_GROQ_API_KEY to your .env file and restart.' }, null);
+      addMessage('assistant', null, { actions: [], message: 'No Groq API key found. Please add REACT_APP_GROQ_API_KEY to your .env file and restart.' }, null);
       return;
     }
 
@@ -175,26 +204,18 @@ export default function AiAssistantTab() {
     setInput('');
     setImages([]);
     setLoading(true);
-
-    // Add user message to UI
     addMessage('user', userText, null, null, userImages);
 
     try {
-      // Build Groq message content
       const contentParts = [];
 
-      if (userText) {
-        contentParts.push({ type: 'text', text: userText });
-      }
+      if (userText) contentParts.push({ type: 'text', text: userText });
 
-      // Add images as vision input
-      for (let i = 0; i < userImages.length; i++) {
+      for (let i = 0; i < userImages.length; i += 1) {
         const b64 = await fileToBase64(userImages[i].file);
         contentParts.push({
           type: 'image_url',
-          image_url: {
-            url: `data:${userImages[i].file.type};base64,${b64}`,
-          },
+          image_url: { url: `data:${userImages[i].file.type};base64,${b64}` },
         });
         contentParts.push({ type: 'text', text: `[Image ${i}: ${userImages[i].name}]` });
       }
@@ -204,11 +225,10 @@ export default function AiAssistantTab() {
       const systemPrompt = buildSystemPrompt(categories, products);
       const newHistory = [...history, { role: 'user', content: contentParts }];
 
-      // Call Groq
       const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          Authorization: `Bearer ${GROQ_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -230,7 +250,6 @@ export default function AiAssistantTab() {
       const groqData = await groqRes.json();
       const rawContent = groqData.choices[0].message.content;
 
-      // Parse JSON from response
       let parsed = { actions: [], message: rawContent };
       const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)```/);
       if (jsonMatch) {
@@ -241,17 +260,13 @@ export default function AiAssistantTab() {
         }
       }
 
-      // Update history
       setHistory([...newHistory, { role: 'assistant', content: rawContent }]);
 
-      // Add assistant message
       const msgId = Date.now();
       addMessage('assistant', rawContent, parsed, 'pending');
 
-      // Execute actions
       if (parsed.actions && parsed.actions.length > 0) {
         await executeActions(parsed.actions, userImages, msgId);
-        // Refresh store data
         fetchProducts().then(setProducts);
         fetchCategories().then(setCategories);
       }
@@ -263,47 +278,6 @@ export default function AiAssistantTab() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const addMessage = (role, content, parsed, status, imgs = []) => {
-    setMessages(prev => [...prev, { role, content, parsed, status, images: imgs, id: Date.now() }]);
-  };
-
-  const executeActions = async (actions, uploadedImages, msgId) => {
-    const results = [];
-
-    for (const action of actions) {
-      try {
-        if (action.type === 'create_product') {
-          const productData = { ...action.data };
-          const imageIndex = productData.image_index;
-          delete productData.image_index;
-
-          // Upload image if referenced
-          if (typeof imageIndex === 'number' && uploadedImages[imageIndex]) {
-            const imageId = await uploadImage(uploadedImages[imageIndex].file);
-            productData.images = [imageId];
-          }
-
-          const created = await createProduct(productData);
-          results.push({ action: 'created', name: created.name || productData.name, success: true });
-
-        } else if (action.type === 'update_product') {
-          const updated = await updateProductBySlug(action.slug, action.data);
-          results.push({ action: 'updated', name: updated.name || action.slug, success: true });
-        }
-      } catch (err) {
-        results.push({ action: action.type, name: action.data?.name || action.slug, success: false, error: err.message });
-      }
-    }
-
-    // Update message status
-    setMessages(prev => prev.map(m => {
-      if (m.id === msgId) {
-        return { ...m, status: 'done', results };
-      }
-      return m;
-    }));
   };
 
   const handleKeyDown = (e) => {
@@ -320,7 +294,7 @@ export default function AiAssistantTab() {
           <Sparkles size={20} className="ai-tab__icon" />
           <div>
             <h2>AI Store Assistant</h2>
-            <p>Dump your product images and details — I'll handle the rest</p>
+            <p>Dump your product images and details - I&apos;ll handle the rest</p>
           </div>
         </div>
         <div className="ai-tab__model">
@@ -328,7 +302,6 @@ export default function AiAssistantTab() {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="ai-messages">
         {messages.map((msg, i) => (
           <ChatMessage key={msg.id || i} msg={msg} />
@@ -337,14 +310,13 @@ export default function AiAssistantTab() {
           <div className="ai-message ai-message--assistant">
             <div className="ai-bubble ai-bubble--thinking">
               <Loader size={14} className="spin" />
-              <span>Thinking…</span>
+              <span>Thinking...</span>
             </div>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Image previews */}
       {images.length > 0 && (
         <div className="ai-image-strip">
           {images.map((img, i) => (
@@ -356,11 +328,10 @@ export default function AiAssistantTab() {
         </div>
       )}
 
-      {/* Input area */}
       <div
         className="ai-input-area"
         onDrop={handleDrop}
-        onDragOver={e => e.preventDefault()}
+        onDragOver={(e) => e.preventDefault()}
       >
         <button
           className="ai-upload-btn"
@@ -375,16 +346,16 @@ export default function AiAssistantTab() {
           multiple
           accept="image/*"
           style={{ display: 'none' }}
-          onChange={e => handleFiles(e.target.files)}
+          onChange={(e) => handleFiles(e.target.files)}
         />
         <textarea
           className="ai-input"
           placeholder={images.length > 0
-            ? "Add product details: name, price, description, stock..."
-            : "Describe products, paste details, or ask me to make changes... (drag & drop images here)"
+            ? 'Add product details: name, price, description, stock...'
+            : 'Describe products, paste details, or ask me to make changes... (drag & drop images here)'
           }
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={3}
         />
@@ -396,12 +367,10 @@ export default function AiAssistantTab() {
           <Send size={18} />
         </button>
       </div>
-      <p className="ai-hint">Press Enter to send · Shift+Enter for new line · Drag & drop images directly</p>
+      <p className="ai-hint">Press Enter to send | Shift+Enter for new line | Drag & drop images directly</p>
     </div>
   );
 }
-
-// ── Chat Message Component ────────────────────────────────────────────────────
 
 function ChatMessage({ msg }) {
   const isUser = msg.role === 'user';
@@ -423,7 +392,6 @@ function ChatMessage({ msg }) {
     );
   }
 
-  // Assistant message
   const parsed = msg.parsed;
   const hasActions = parsed?.actions?.length > 0;
 
@@ -435,7 +403,6 @@ function ChatMessage({ msg }) {
       <div className="ai-bubble ai-bubble--assistant">
         <p className="ai-bubble__text">{parsed?.message}</p>
 
-        {/* Action cards */}
         {hasActions && (
           <div className="ai-actions-list">
             {parsed.actions.map((action, i) => {
@@ -453,7 +420,7 @@ function ChatMessage({ msg }) {
                     </span>
                     <span className="ai-action-card__name">
                       {action.data?.name || action.slug}
-                      {action.data?.price && ` — GH₵${action.data.price}`}
+                      {action.data?.price && ` - GHS ${action.data.price}`}
                     </span>
                     {result && !result.success && (
                       <span className="ai-action-card__error">{result.error}</span>
@@ -461,7 +428,7 @@ function ChatMessage({ msg }) {
                   </div>
                   <div className="ai-action-card__status">
                     {!result && <span className="status-dot status-dot--pending" />}
-                    {result?.success && <span className="status-text success">Done ✓</span>}
+                    {result?.success && <span className="status-text success">Done</span>}
                     {result && !result.success && <span className="status-text error">Failed</span>}
                   </div>
                 </div>

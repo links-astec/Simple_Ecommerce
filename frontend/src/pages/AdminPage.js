@@ -10,9 +10,6 @@ import './AdminPage.css';
 
 const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'belshaven2024';
 
-
-
-// ─── Auth ────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -40,8 +37,8 @@ function LoginScreen({ onLogin }) {
             className="input-field"
             placeholder="Enter your password"
             value={password}
-            onChange={e => { setPassword(e.target.value); setError(''); }}
-            onKeyDown={e => e.key === 'Enter' && submit()}
+            onChange={(e) => { setPassword(e.target.value); setError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
             autoFocus
           />
           {error && <p className="admin-login__error"><AlertCircle size={14} />{error}</p>}
@@ -54,7 +51,6 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// ─── Main Admin ──────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('bh_admin') === '1');
   const [tab, setTab] = useState('products');
@@ -68,11 +64,12 @@ export default function AdminPage() {
 
   return (
     <div className="admin-page">
+      {menuOpen && <button className="admin-mobile-backdrop" onClick={() => setMenuOpen(false)} aria-label="Close admin menu" />}
       <aside className={`admin-sidebar ${menuOpen ? 'admin-sidebar--open' : ''}`}>
         <div className="admin-mobile-bar">
           <button
             className="admin-mobile-bar__toggle"
-            onClick={() => setMenuOpen(open => !open)}
+            onClick={() => setMenuOpen((open) => !open)}
             aria-label={menuOpen ? 'Close admin menu' : 'Open admin menu'}
             aria-expanded={menuOpen}
           >
@@ -87,27 +84,29 @@ export default function AdminPage() {
           <h2>Bel's Haven</h2>
           <p>Admin Dashboard</p>
         </div>
-        <nav className="admin-nav">
-          {[
-            { id: 'products', icon: Package, label: 'Products' },
-            { id: 'orders', icon: ShoppingBag, label: 'Orders' },
-            { id: 'categories', icon: Tag, label: 'Categories' },
-            { id: 'stats', icon: BarChart2, label: 'Overview' },
-            { id: 'ai', icon: Sparkles, label: 'AI Assistant' },
-          ].map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              className={`admin-nav__item ${tab === id ? 'active' : ''}`}
-              onClick={() => setTab(id)}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </nav>
-        <button className="admin-nav__logout" onClick={() => { sessionStorage.removeItem('bh_admin'); setAuthed(false); }}>
-          <LogOut size={16} /> <span>Logout</span>
-        </button>
+        <div className="admin-sidebar__panel">
+          <nav className="admin-nav">
+            {[
+              { id: 'products', icon: Package, label: 'Products' },
+              { id: 'orders', icon: ShoppingBag, label: 'Orders' },
+              { id: 'categories', icon: Tag, label: 'Categories' },
+              { id: 'stats', icon: BarChart2, label: 'Overview' },
+              { id: 'ai', icon: Sparkles, label: 'AI Assistant' },
+            ].map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                className={`admin-nav__item ${tab === id ? 'active' : ''}`}
+                onClick={() => setTab(id)}
+              >
+                <Icon size={18} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+          <button className="admin-nav__logout" onClick={() => { sessionStorage.removeItem('bh_admin'); setAuthed(false); }}>
+            <LogOut size={16} /> <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       <main className="admin-main">
@@ -121,30 +120,29 @@ export default function AdminPage() {
   );
 }
 
-// ─── Stats Tab ───────────────────────────────────────────────────────────────
 function StatsTab() {
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
-    API.get('/stats/').then(r => setStats(r.data)).catch(() => {});
-    API.get('/orders/all/').then(r => setOrders(r.data.results || r.data || [])).catch(() => {});
+    API.get('/stats/').then((r) => setStats(r.data)).catch(() => {});
+    API.get('/orders/all/').then((r) => setOrders(r.data.results || r.data || [])).catch(() => {});
   }, []);
 
-  const revenue = orders.filter(o => o.payment_verified).reduce((s, o) => s + parseFloat(o.total_amount || 0), 0);
-  const paid = orders.filter(o => o.payment_verified).length;
+  const revenue = orders.filter((o) => o.payment_verified).reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+  const paid = orders.filter((o) => o.payment_verified).length;
 
   return (
     <div className="admin-section">
       <h2 className="admin-section__title">Overview</h2>
       <div className="stats-grid">
         {[
-          { label: 'Total Products', value: stats?.total_products ?? '…', color: 'gold' },
-          { label: 'Available', value: stats?.available_products ?? '…', color: 'green' },
-          { label: 'Pre-orders', value: stats?.preorder_products ?? '…', color: 'blue' },
+          { label: 'Total Products', value: stats?.total_products ?? '...', color: 'gold' },
+          { label: 'Available', value: stats?.available_products ?? '...', color: 'green' },
+          { label: 'Pre-orders', value: stats?.preorder_products ?? '...', color: 'blue' },
           { label: 'Paid Orders', value: paid, color: 'gold' },
-          { label: 'Total Revenue', value: `GH₵${revenue.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`, color: 'green' },
-          { label: 'Categories', value: stats?.categories ?? '…', color: 'blue' },
+          { label: 'Total Revenue', value: `GHS ${revenue.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`, color: 'green' },
+          { label: 'Categories', value: stats?.categories ?? '...', color: 'blue' },
         ].map(({ label, value, color }) => (
           <div key={label} className={`stat-card stat-card--${color}`}>
             <p className="stat-card__label">{label}</p>
@@ -156,7 +154,6 @@ function StatsTab() {
   );
 }
 
-// ─── Categories Tab ───────────────────────────────────────────────────────────
 function CategoriesTab() {
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -165,17 +162,17 @@ function CategoriesTab() {
   const [editId, setEditId] = useState(null);
 
   const load = useCallback(() => {
-    API.get('/categories/').then(r => setCategories(r.data.results || r.data || []));
+    API.get('/categories/').then((r) => setCategories(r.data.results || r.data || []));
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const set = k => e => {
+  const set = (key) => (e) => {
     const val = e.target.value;
-    setForm(f => ({
-      ...f,
-      [k]: val,
-      ...(k === 'name' && !editId ? { slug: val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') } : {})
+    setForm((prev) => ({
+      ...prev,
+      [key]: val,
+      ...(key === 'name' && !editId ? { slug: val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') } : {})
     }));
   };
 
@@ -191,7 +188,9 @@ function CategoriesTab() {
       load();
     } catch (e) {
       alert('Error saving category');
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const del = async (id) => {
@@ -233,7 +232,7 @@ function CategoriesTab() {
             <textarea className="input-field" rows={2} value={form.description} onChange={set('description')} />
           </div>
           <button className="btn-primary" onClick={save} disabled={saving}>
-            {saving ? <><div className="spinner" /><span>Saving…</span></> : <><Check size={15} /><span>Save Category</span></>}
+            {saving ? <><div className="spinner" /><span>Saving...</span></> : <><Check size={15} /><span>Save Category</span></>}
           </button>
         </div>
       )}
@@ -242,7 +241,7 @@ function CategoriesTab() {
         <table className="admin-table">
           <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th>Actions</th></tr></thead>
           <tbody>
-            {categories.map(cat => (
+            {categories.map((cat) => (
               <tr key={cat.id}>
                 <td>{cat.name}</td>
                 <td><code>{cat.slug}</code></td>
@@ -263,7 +262,6 @@ function CategoriesTab() {
   );
 }
 
-// ─── Products Tab ─────────────────────────────────────────────────────────────
 function ProductsTab() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -298,21 +296,23 @@ function ProductsTab() {
     load();
   };
 
-  const filtered = products.filter(p =>
+  const filtered = products.filter((p) =>
     filter === 'all' ? true :
     filter === 'available' ? p.product_type === 'available' :
     filter === 'preorder' ? p.product_type === 'preorder' :
     filter === 'inactive' ? p.status === 'inactive' : true
   );
 
-  if (showForm) return (
-    <ProductForm
-      product={editProduct}
-      categories={categories}
-      onDone={() => { setShowForm(false); setEditProduct(null); load(); }}
-      onCancel={() => { setShowForm(false); setEditProduct(null); }}
-    />
-  );
+  if (showForm) {
+    return (
+      <ProductForm
+        product={editProduct}
+        categories={categories}
+        onDone={() => { setShowForm(false); setEditProduct(null); load(); }}
+        onCancel={() => { setShowForm(false); setEditProduct(null); }}
+      />
+    );
+  }
 
   return (
     <div className="admin-section">
@@ -324,7 +324,7 @@ function ProductsTab() {
       </div>
 
       <div className="filter-pills" style={{ marginBottom: 24 }}>
-        {['all','available','preorder','inactive'].map(f => (
+        {['all', 'available', 'preorder', 'inactive'].map((f) => (
           <button key={f} className={`filter-pill ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
@@ -333,13 +333,10 @@ function ProductsTab() {
 
       {loading ? <div className="admin-loading"><div className="spinner" /></div> : (
         <div className="product-admin-grid">
-          {filtered.map(p => (
+          {filtered.map((p) => (
             <div key={p.id} className={`product-admin-card ${p.status === 'inactive' ? 'inactive' : ''}`}>
               <div className="product-admin-card__image">
-                {p.primary_image
-                  ? <img src={p.primary_image} alt={p.name} />
-                  : <Package size={28} />
-                }
+                {p.primary_image ? <img src={p.primary_image} alt={p.name} /> : <Package size={28} />}
                 <div className="product-admin-card__badges">
                   <span className={`badge ${p.product_type === 'preorder' ? 'badge-preorder' : 'badge-available'}`}>
                     {p.product_type === 'preorder' ? 'Pre-order' : 'In Stock'}
@@ -349,7 +346,7 @@ function ProductsTab() {
               </div>
               <div className="product-admin-card__body">
                 <p className="product-admin-card__name">{p.name}</p>
-                <p className="product-admin-card__price">GH₵{parseFloat(p.price).toLocaleString('en-GH')}</p>
+                <p className="product-admin-card__price">GHS {parseFloat(p.price).toLocaleString('en-GH')}</p>
                 <p className="product-admin-card__stock">
                   {p.product_type === 'preorder' ? `${p.stock_quantity} slots` : `${p.stock_quantity} in stock`}
                 </p>
@@ -366,16 +363,13 @@ function ProductsTab() {
               </div>
             </div>
           ))}
-          {filtered.length === 0 && (
-            <div className="admin-empty">No products found</div>
-          )}
+          {filtered.length === 0 && <div className="admin-empty">No products found</div>}
         </div>
       )}
     </div>
   );
 }
 
-// ─── Product Form ─────────────────────────────────────────────────────────────
 function ProductForm({ product, categories, onDone, onCancel }) {
   const isEdit = !!product;
   const [saving, setSaving] = useState(false);
@@ -398,22 +392,22 @@ function ProductForm({ product, categories, onDone, onCancel }) {
     is_featured: product?.is_featured || false,
   });
 
-  const set = k => e => {
+  const set = (key) => (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setForm(f => ({
-      ...f,
-      [k]: val,
-      ...(k === 'name' && !isEdit ? { slug: val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') } : {})
+    setForm((prev) => ({
+      ...prev,
+      [key]: val,
+      ...(key === 'name' && !isEdit ? { slug: val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') } : {})
     }));
   };
 
-  const handleImages = e => {
+  const handleImages = (e) => {
     const files = Array.from(e.target.files);
-    setImages(prev => [...prev, ...files]);
+    setImages((prev) => [...prev, ...files]);
   };
 
-  const removeNewImage = i => setImages(prev => prev.filter((_, idx) => idx !== i));
-  const removeExisting = id => setExistingImages(prev => prev.filter(img => img.id !== id));
+  const removeNewImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
+  const removeExisting = (id) => setExistingImages((prev) => prev.filter((img) => img.id !== id));
 
   const save = async () => {
     if (!form.name || !form.price || !form.stock_quantity) {
@@ -422,9 +416,8 @@ function ProductForm({ product, categories, onDone, onCancel }) {
     }
     setSaving(true);
     try {
-      let imageIds = existingImages.map(i => i.id);
+      let imageIds = existingImages.map((i) => i.id);
 
-      // Upload new images first
       for (const file of images) {
         const fd = new FormData();
         fd.append('image', file);
@@ -437,16 +430,16 @@ function ProductForm({ product, categories, onDone, onCancel }) {
 
       const payload = { ...form, images: imageIds };
 
-      if (isEdit) {
-        await API.put(`/products/${product.slug}/`, payload);
-      } else {
-        await API.post('/products/', payload);
-      }
+      if (isEdit) await API.put(`/products/${product.slug}/`, payload);
+      else await API.post('/products/', payload);
+
       onDone();
     } catch (e) {
       console.error(e);
       alert(e.response?.data ? JSON.stringify(e.response.data) : 'Error saving product');
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -457,7 +450,6 @@ function ProductForm({ product, categories, onDone, onCancel }) {
       </div>
 
       <div className="admin-form-card">
-        {/* Basic */}
         <div className="form-section-label">Basic Information</div>
         <div className="admin-form-grid admin-form-grid--2">
           <div className="form-group">
@@ -471,18 +463,18 @@ function ProductForm({ product, categories, onDone, onCancel }) {
         </div>
         <div className="form-group">
           <label>Description *</label>
-          <textarea className="input-field" rows={4} value={form.description} onChange={set('description')} placeholder="Describe the product in detail…" />
+          <textarea className="input-field" rows={4} value={form.description} onChange={set('description')} placeholder="Describe the product in detail..." />
         </div>
         <div className="admin-form-grid admin-form-grid--3">
           <div className="form-group">
             <label>Category</label>
             <select className="input-field" value={form.category} onChange={set('category')}>
               <option value="">No category</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="form-group">
-            <label>Price (GH₵) *</label>
+            <label>Price (GHS) *</label>
             <input className="input-field" type="number" value={form.price} onChange={set('price')} placeholder="5000" />
           </div>
           <div className="form-group">
@@ -491,18 +483,17 @@ function ProductForm({ product, categories, onDone, onCancel }) {
           </div>
         </div>
 
-        {/* Type */}
         <div className="form-section-label">Product Type</div>
         <div className="type-toggle">
           <button
             className={`type-btn ${form.product_type === 'available' ? 'active' : ''}`}
-            onClick={() => setForm(f => ({ ...f, product_type: 'available' }))}
+            onClick={() => setForm((prev) => ({ ...prev, product_type: 'available' }))}
           >
             <Package size={16} /> In Stock / Available
           </button>
           <button
             className={`type-btn ${form.product_type === 'preorder' ? 'active' : ''}`}
-            onClick={() => setForm(f => ({ ...f, product_type: 'preorder' }))}
+            onClick={() => setForm((prev) => ({ ...prev, product_type: 'preorder' }))}
           >
             <Clock size={16} /> Pre-order
           </button>
@@ -511,12 +502,12 @@ function ProductForm({ product, categories, onDone, onCancel }) {
         {form.product_type === 'available' && (
           <div className="admin-form-grid admin-form-grid--2">
             <div className="form-group">
-              <label>Shipping Fee (GH₵)</label>
+              <label>Shipping Fee (GHS)</label>
               <input className="input-field" type="number" value={form.shipping_fee} onChange={set('shipping_fee')} placeholder="0" />
             </div>
             <div className="form-group">
               <label>Delivery Timeframe</label>
-              <input className="input-field" value={form.delivery_timeframe} onChange={set('delivery_timeframe')} placeholder="e.g. 3–5 business days" />
+              <input className="input-field" value={form.delivery_timeframe} onChange={set('delivery_timeframe')} placeholder="e.g. 3-5 business days" />
             </div>
           </div>
         )}
@@ -526,10 +517,10 @@ function ProductForm({ product, categories, onDone, onCancel }) {
             <div className="admin-form-grid admin-form-grid--2">
               <div className="form-group">
                 <label>Estimated Arrival</label>
-                <input className="input-field" value={form.preorder_eta} onChange={set('preorder_eta')} placeholder="e.g. 4–6 weeks" />
+                <input className="input-field" value={form.preorder_eta} onChange={set('preorder_eta')} placeholder="e.g. 4-6 weeks" />
               </div>
               <div className="form-group">
-                <label>Shipping Fee when Ready (GH₵)</label>
+                <label>Shipping Fee when Ready (GHS)</label>
                 <input className="input-field" type="number" value={form.preorder_shipping_fee} onChange={set('preorder_shipping_fee')} placeholder="0" />
               </div>
             </div>
@@ -537,17 +528,16 @@ function ProductForm({ product, categories, onDone, onCancel }) {
               <label className="toggle-label">
                 <input type="checkbox" checked={form.preorder_shipped} onChange={set('preorder_shipped')} />
                 <span className="toggle-track"><span className="toggle-thumb" /></span>
-                Mark as Shipped — customers will be notified to pay shipping fee
+                Mark as Shipped - customers will be notified to pay shipping fee
               </label>
             </div>
           </div>
         )}
 
-        {/* Visibility */}
         <div className="form-section-label">Visibility & Display</div>
         <div className="toggles-row">
           <label className="toggle-label">
-            <input type="checkbox" checked={form.status === 'active'} onChange={e => setForm(f => ({ ...f, status: e.target.checked ? 'active' : 'inactive' }))} />
+            <input type="checkbox" checked={form.status === 'active'} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.checked ? 'active' : 'inactive' }))} />
             <span className="toggle-track"><span className="toggle-thumb" /></span>
             Show on store
           </label>
@@ -558,7 +548,6 @@ function ProductForm({ product, categories, onDone, onCancel }) {
           </label>
         </div>
 
-        {/* Images */}
         <div className="form-section-label">Product Images</div>
         <div className="image-upload-area">
           <label className="image-upload-btn">
@@ -570,7 +559,7 @@ function ProductForm({ product, categories, onDone, onCancel }) {
 
         {existingImages.length > 0 && (
           <div className="image-previews">
-            {existingImages.map(img => (
+            {existingImages.map((img) => (
               <div key={img.id} className="image-preview">
                 <img src={img.url} alt="" />
                 {img.is_primary && <span className="image-primary-badge">Main</span>}
@@ -593,14 +582,13 @@ function ProductForm({ product, categories, onDone, onCancel }) {
         )}
 
         <button className="btn-primary" style={{ marginTop: 24, minWidth: 180 }} onClick={save} disabled={saving}>
-          {saving ? <><div className="spinner" /><span>Saving…</span></> : <><Check size={16} /><span>{isEdit ? 'Update Product' : 'Publish Product'}</span></>}
+          {saving ? <><div className="spinner" /><span>Saving...</span></> : <><Check size={16} /><span>{isEdit ? 'Update Product' : 'Publish Product'}</span></>}
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Orders Tab ───────────────────────────────────────────────────────────────
 function OrdersTab() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -609,7 +597,7 @@ function OrdersTab() {
 
   const load = useCallback(() => {
     setLoading(true);
-    API.get('/orders/all/').then(r => setOrders(r.data.results || r.data || [])).finally(() => setLoading(false));
+    API.get('/orders/all/').then((r) => setOrders(r.data.results || r.data || [])).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -617,72 +605,78 @@ function OrdersTab() {
   const updateStatus = async (ref, status) => {
     await API.patch(`/orders/${ref}/`, { status });
     load();
-    if (selected?.reference === ref) setSelected(prev => ({ ...prev, status }));
+    if (selected?.reference === ref) setSelected((prev) => ({ ...prev, status }));
   };
 
   const STATUS_COLORS = {
-    pending: '#9a9080', paid: '#c9a84c', processing: '#4a90d9',
-    shipped: '#9b59b6', delivered: '#4caf7d', cancelled: '#e05a5a'
+    pending: '#9a9080',
+    paid: '#c9a84c',
+    processing: '#4a90d9',
+    shipped: '#9b59b6',
+    delivered: '#4caf7d',
+    cancelled: '#e05a5a'
   };
 
-  const filtered = orders.filter(o =>
+  const filtered = orders.filter((o) =>
     filter === 'all' ? true :
     filter === 'unpaid' ? !o.payment_verified :
     o.status === filter
   );
 
-  if (selected) return (
-    <div className="admin-section">
-      <div className="admin-section__header">
-        <h2 className="admin-section__title">Order #{selected.reference}</h2>
-        <button className="btn-ghost" onClick={() => setSelected(null)}><X size={16} /> Back</button>
-      </div>
-      <div className="order-detail-grid">
-        <div className="order-detail-card">
-          <h4>Customer</h4>
-          <p><strong>{selected.customer_name}</strong></p>
-          <p>{selected.customer_email}</p>
-          <p>{selected.customer_phone}</p>
-          <hr className="divider" style={{ margin: '12px 0' }} />
-          <h4>Delivery Address</h4>
-          <p>{selected.delivery_address}</p>
-          <p>{selected.city}, {selected.state}</p>
-          {selected.notes && <><hr className="divider" style={{ margin: '12px 0' }} /><h4>Notes</h4><p>{selected.notes}</p></>}
+  if (selected) {
+    return (
+      <div className="admin-section">
+        <div className="admin-section__header">
+          <h2 className="admin-section__title">Order #{selected.reference}</h2>
+          <button className="btn-ghost" onClick={() => setSelected(null)}><X size={16} /> Back</button>
         </div>
-        <div className="order-detail-card">
-          <h4>Items</h4>
-          {selected.items?.map(item => (
-            <div key={item.id} className="order-item-row">
-              <span>{item.product_name} x{item.quantity}</span>
-              <span>GH₵{(parseFloat(item.unit_price) * item.quantity).toLocaleString('en-GH')}</span>
-            </div>
-          ))}
-          <hr className="divider" style={{ margin: '12px 0' }} />
-          <div className="order-item-row"><span>Shipping</span><span>GH₵{parseFloat(selected.shipping_fee).toLocaleString('en-GH')}</span></div>
-          <div className="order-item-row order-item-row--total"><span>Total</span><span>GH₵{parseFloat(selected.total_amount).toLocaleString('en-GH')}</span></div>
-        </div>
-        <div className="order-detail-card">
-          <h4>Update Status</h4>
-          <div className="status-buttons">
-            {['pending','paid','processing','shipped','delivered','cancelled'].map(s => (
-              <button
-                key={s}
-                className={`status-btn ${selected.status === s ? 'active' : ''}`}
-                style={{ '--color': STATUS_COLORS[s] }}
-                onClick={() => updateStatus(selected.reference, s)}
-              >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </button>
+        <div className="order-detail-grid">
+          <div className="order-detail-card">
+            <h4>Customer</h4>
+            <p><strong>{selected.customer_name}</strong></p>
+            <p>{selected.customer_email}</p>
+            <p>{selected.customer_phone}</p>
+            <hr className="divider" style={{ margin: '12px 0' }} />
+            <h4>Delivery Address</h4>
+            <p>{selected.delivery_address}</p>
+            <p>{selected.city}, {selected.state}</p>
+            {selected.notes && <><hr className="divider" style={{ margin: '12px 0' }} /><h4>Notes</h4><p>{selected.notes}</p></>}
+          </div>
+          <div className="order-detail-card">
+            <h4>Items</h4>
+            {selected.items?.map((item) => (
+              <div key={item.id} className="order-item-row">
+                <span>{item.product_name} x{item.quantity}</span>
+                <span>GHS {(parseFloat(item.unit_price) * item.quantity).toLocaleString('en-GH')}</span>
+              </div>
             ))}
+            <hr className="divider" style={{ margin: '12px 0' }} />
+            <div className="order-item-row"><span>Shipping</span><span>GHS {parseFloat(selected.shipping_fee).toLocaleString('en-GH')}</span></div>
+            <div className="order-item-row order-item-row--total"><span>Total</span><span>GHS {parseFloat(selected.total_amount).toLocaleString('en-GH')}</span></div>
           </div>
-          <div className="order-payment-info">
-            <p>Payment: <strong style={{ color: selected.payment_verified ? '#4caf7d' : '#e05a5a' }}>{selected.payment_verified ? '✓ Verified' : '✗ Not Paid'}</strong></p>
-            {selected.payment_date && <p>Paid on: {new Date(selected.payment_date).toLocaleString()}</p>}
+          <div className="order-detail-card">
+            <h4>Update Status</h4>
+            <div className="status-buttons">
+              {['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'].map((s) => (
+                <button
+                  key={s}
+                  className={`status-btn ${selected.status === s ? 'active' : ''}`}
+                  style={{ '--color': STATUS_COLORS[s] }}
+                  onClick={() => updateStatus(selected.reference, s)}
+                >
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="order-payment-info">
+              <p>Payment: <strong style={{ color: selected.payment_verified ? '#4caf7d' : '#e05a5a' }}>{selected.payment_verified ? 'Verified' : 'Not Paid'}</strong></p>
+              {selected.payment_date && <p>Paid on: {new Date(selected.payment_date).toLocaleString()}</p>}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="admin-section">
@@ -692,7 +686,7 @@ function OrdersTab() {
       </div>
 
       <div className="filter-pills" style={{ marginBottom: 24 }}>
-        {['all','unpaid','paid','processing','shipped','delivered'].map(f => (
+        {['all', 'unpaid', 'paid', 'processing', 'shipped', 'delivered'].map((f) => (
           <button key={f} className={`filter-pill ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
@@ -706,14 +700,14 @@ function OrdersTab() {
               <tr><th>Reference</th><th>Customer</th><th>Amount</th><th>Status</th><th>Payment</th><th>Date</th><th></th></tr>
             </thead>
             <tbody>
-              {filtered.map(o => (
+              {filtered.map((o) => (
                 <tr key={o.id}>
                   <td><code>{o.reference}</code></td>
                   <td>
                     <div>{o.customer_name}</div>
                     <small style={{ color: 'var(--text-muted)' }}>{o.customer_email}</small>
                   </td>
-                  <td>GH₵{parseFloat(o.total_amount).toLocaleString('en-GH')}</td>
+                  <td>GHS {parseFloat(o.total_amount).toLocaleString('en-GH')}</td>
                   <td>
                     <span className="order-status-badge" style={{ color: STATUS_COLORS[o.status] }}>
                       {o.status}
@@ -721,7 +715,7 @@ function OrdersTab() {
                   </td>
                   <td>
                     <span style={{ color: o.payment_verified ? '#4caf7d' : '#e05a5a', fontSize: '0.75rem' }}>
-                      {o.payment_verified ? '✓ Paid' : '✗ Pending'}
+                      {o.payment_verified ? 'Paid' : 'Pending'}
                     </span>
                   </td>
                   <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>

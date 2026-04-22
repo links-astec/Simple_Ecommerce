@@ -4,7 +4,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from corsheaders.defaults import default_headers
 
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "cache-control",
+    "pragma",
+]
 def env_list(name, default=''):
     value = os.getenv(name, default)
     if not value:
