@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg-info/
+
+# Django
+*.log
+*.pot
+*.pyc
+*.pyo
+*.db
+*.sqlite3
+media/
+staticfiles/
+
+# Environments
+venv/
+.env
+.env.*
+
+# VSCode
+.vscode/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+
+# React
+frontend/build/
+frontend/.env
+
+# Misc
+*.bak
+*.swp
+*.swo
+
+# Ignore test coverage
+htmlcov/
+.coverage
+
+# Ignore local settings
+backend/db.sqlite3
+backend/.env
