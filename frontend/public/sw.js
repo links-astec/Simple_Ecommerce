@@ -2,6 +2,7 @@ const CACHE = 'bels-haven-v1';
 const STATIC = [
   '/',
   '/manage',
+  '/manage/index.html',
   '/manifest.json',
   '/manage.webmanifest',
 ];

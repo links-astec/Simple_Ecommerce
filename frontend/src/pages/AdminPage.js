@@ -68,6 +68,7 @@ export default function AdminPage() {
 
   return (
     <div className="admin-page">
+      {menuOpen && <button className="admin-mobile-backdrop" onClick={() => setMenuOpen(false)} aria-label="Close admin menu" />}
       <aside className={`admin-sidebar ${menuOpen ? 'admin-sidebar--open' : ''}`}>
         <div className="admin-mobile-bar">
           <button
@@ -87,27 +88,29 @@ export default function AdminPage() {
           <h2>Bel's Haven</h2>
           <p>Admin Dashboard</p>
         </div>
-        <nav className="admin-nav">
-          {[
-            { id: 'products', icon: Package, label: 'Products' },
-            { id: 'orders', icon: ShoppingBag, label: 'Orders' },
-            { id: 'categories', icon: Tag, label: 'Categories' },
-            { id: 'stats', icon: BarChart2, label: 'Overview' },
-            { id: 'ai', icon: Sparkles, label: 'AI Assistant' },
-          ].map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              className={`admin-nav__item ${tab === id ? 'active' : ''}`}
-              onClick={() => setTab(id)}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </nav>
-        <button className="admin-nav__logout" onClick={() => { sessionStorage.removeItem('bh_admin'); setAuthed(false); }}>
-          <LogOut size={16} /> <span>Logout</span>
-        </button>
+        <div className="admin-sidebar__panel">
+          <nav className="admin-nav">
+            {[
+              { id: 'products', icon: Package, label: 'Products' },
+              { id: 'orders', icon: ShoppingBag, label: 'Orders' },
+              { id: 'categories', icon: Tag, label: 'Categories' },
+              { id: 'stats', icon: BarChart2, label: 'Overview' },
+              { id: 'ai', icon: Sparkles, label: 'AI Assistant' },
+            ].map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                className={`admin-nav__item ${tab === id ? 'active' : ''}`}
+                onClick={() => setTab(id)}
+              >
+                <Icon size={18} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+          <button className="admin-nav__logout" onClick={() => { sessionStorage.removeItem('bh_admin'); setAuthed(false); }}>
+            <LogOut size={16} /> <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       <main className="admin-main">
