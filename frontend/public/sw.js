@@ -1,8 +1,7 @@
-const CACHE = 'bels-haven-v1';
+const CACHE = 'bels-haven-v2';
 const STATIC = [
   '/',
   '/manage',
-  '/manage/index.html',
   '/manifest.json',
   '/manage.webmanifest',
 ];
@@ -35,6 +34,12 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE).then(cache => cache.put(e.request, clone));
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() =>
+        caches.match(e.request).then(match => {
+          if (match) return match;
+          if (e.request.mode === 'navigate') return caches.match('/');
+          return new Response('', { status: 504, statusText: 'Offline' });
+        })
+      )
   );
 });

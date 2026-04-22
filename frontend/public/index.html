@@ -28,14 +28,18 @@
         var ogTitle = document.querySelector('meta[property="og:title"]');
         var ogDescription = document.querySelector('meta[property="og:description"]');
         var statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+        var appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+        var favicon = document.querySelector('link[rel="icon"]');
 
-        if (manifestLink) manifestLink.setAttribute('href', '%PUBLIC_URL%/manage.webmanifest');
+        if (manifestLink) manifestLink.setAttribute('href', '/manage.webmanifest');
         if (themeColor) themeColor.setAttribute('content', '#111111');
         if (appleTitle) appleTitle.setAttribute('content', 'Bel\'s Haven Admin');
         if (description) description.setAttribute('content', 'Bel\'s Haven admin dashboard for managing products, categories, and orders.');
         if (ogTitle) ogTitle.setAttribute('content', 'Bel\'s Haven Admin');
         if (ogDescription) ogDescription.setAttribute('content', 'Manage products, categories, and orders from the Bel\'s Haven dashboard.');
         if (statusBar) statusBar.setAttribute('content', 'black');
+        if (appleTouchIcon) appleTouchIcon.setAttribute('href', '/admin-apple-touch-icon.png');
+        if (favicon) favicon.setAttribute('href', '/admin-favicon-32x32.png');
 
         document.title = 'Bel\'s Haven Admin';
       })();
