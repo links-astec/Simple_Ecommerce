@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Package, Clock } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { getProducts, getCategories } from '../api';
+import useLiveRefresh from '../useLiveRefresh';
 import './HomePage.css';
 
 export default function HomePage() {
@@ -10,7 +11,7 @@ export default function HomePage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadHome = useCallback(() => {
     Promise.all([
       getProducts({ featured: 'true' }),
       getCategories(),
@@ -20,6 +21,12 @@ export default function HomePage() {
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadHome();
+  }, [loadHome]);
+
+  useLiveRefresh(loadHome, 30000);
 
   return (
     <div className="home">

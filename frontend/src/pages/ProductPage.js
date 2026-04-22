@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ShoppingBag, ArrowLeft, Clock, Package, Truck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getProduct } from '../api';
 import { useCart } from '../CartContext';
+import useLiveRefresh from '../useLiveRefresh';
 import toast from 'react-hot-toast';
 import './ProductPage.css';
 
@@ -14,13 +15,20 @@ export default function ProductPage() {
   const [qty, setQty] = useState(1);
   const [imgIdx, setImgIdx] = useState(0);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
+  const loadProduct = useCallback(() => {
     getProduct(slug)
       .then(res => setProduct(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [slug]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    setLoading(true);
+    loadProduct();
+  }, [slug, loadProduct]);
+
+  useLiveRefresh(loadProduct, 30000);
 
   if (loading) return (
     <div className="product-page product-page--loading">

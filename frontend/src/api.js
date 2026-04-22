@@ -4,6 +4,21 @@ const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api',
 });
 
+API.interceptors.request.use((config) => {
+  if ((config.method || 'get').toLowerCase() === 'get') {
+    config.params = {
+      ...(config.params || {}),
+      _ts: Date.now(),
+    };
+    config.headers = {
+      ...(config.headers || {}),
+      'Cache-Control': 'no-cache, no-store, max-age=0',
+      Pragma: 'no-cache',
+    };
+  }
+  return config;
+});
+
 export const getCategories = () => API.get('/categories/');
 export const getProducts = (params = {}) => API.get('/products/', { params });
 export const getProduct = (slug) => API.get(`/products/${slug}/`);

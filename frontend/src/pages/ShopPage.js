@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { getProducts, getCategories } from '../api';
+import useLiveRefresh from '../useLiveRefresh';
 import './ShopPage.css';
 
 export default function ShopPage() {
@@ -36,6 +37,8 @@ export default function ShopPage() {
     const t = setTimeout(fetchProducts, 300);
     return () => clearTimeout(t);
   }, [fetchProducts]);
+
+  useLiveRefresh(fetchProducts, 30000);
 
   const setFilter = (key, value) => {
     const p = new URLSearchParams(searchParams);
