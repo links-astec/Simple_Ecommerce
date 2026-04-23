@@ -35,5 +35,5 @@ services:
         value: "https://simple-ecommerce-kappa-khaki.vercel.app"
     disk:
       name: media
-      mountPath: /backend/media
+      mountPath: /opt/render/project/src/media
       sizeGB: 1
