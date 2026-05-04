@@ -62,7 +62,12 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.detail || 'Something went wrong. Please try again.');
+      const msg = err.response?.data?.detail
+        || err.response?.data?.error
+        || (typeof err.response?.data === 'string' ? err.response.data : null)
+        || err.message
+        || 'Something went wrong. Please try again.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

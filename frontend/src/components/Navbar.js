@@ -35,6 +35,7 @@ export default function Navbar() {
           <Link to="/shop" className={location.pathname.startsWith('/shop') ? 'active' : ''}>Shop</Link>
           <Link to="/shop?type=available">Available</Link>
           <Link to="/shop?type=preorder">Pre-order</Link>
+          <Link to="/track-order" className={location.pathname === '/track-order' ? 'active' : ''}>Track Order</Link>
         </nav>
 
         <Link to="/cart" className="navbar__cart">
@@ -49,6 +50,7 @@ export default function Navbar() {
         <Link to="/shop">Shop All</Link>
         <Link to="/shop?type=available">Available Now</Link>
         <Link to="/shop?type=preorder">Pre-order</Link>
+        <Link to="/track-order">Track Order</Link>
         <Link to="/cart">Cart {totalItems > 0 && `(${totalItems})`}</Link>
       </div>
     </nav>

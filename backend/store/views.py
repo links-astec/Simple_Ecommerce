@@ -322,6 +322,26 @@ from django.http import JsonResponse
 def health(request):
     return JsonResponse({"status": "ok"})
 
+
+class SendCustomerMessageView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        subject = request.data.get('subject', "Message from Bel's Haven")
+        message = request.data.get('message')
+        if not email or not message:
+            return Response({'error': 'Email and message required'}, status=400)
+        try:
+            send_mail(
+                subject=subject,
+                message=f"{message}\n\n— Bel's Haven",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            return Response({'status': 'sent'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
 def _send_admin_notification(order):
     notify_email = getattr(settings, 'NOTIFY_EMAIL', None) or getattr(settings, 'ADMIN_EMAIL', None)
     if not notify_email:

@@ -23,4 +23,6 @@ urlpatterns = [
     path('product-images/', views.ProductImageUploadView.as_view(), name='product-image-upload'),
     path("health/", health),
 
+    # Admin – messaging
+    path('send-message/', views.SendCustomerMessageView.as_view(), name='send-message'),
 ]

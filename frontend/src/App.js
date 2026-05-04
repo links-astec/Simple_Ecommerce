@@ -12,6 +12,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import PaymentVerifyPage from './pages/PaymentVerifyPage';
 import OrderConfirmPage from './pages/OrderConfirmPage';
 import AdminPage from './pages/AdminPage';
+import TrackOrderPage from './pages/TrackOrderPage';
 
 function RouteMetadata() {
   const location = useLocation();
@@ -76,6 +77,7 @@ function Layout() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/payment/verify" element={<PaymentVerifyPage />} />
           <Route path="/order/:reference" element={<OrderConfirmPage />} />
+          <Route path="/track-order" element={<TrackOrderPage />} />
           <Route path="/manage/*" element={<AdminPage />} />
         </Routes>
       </main>

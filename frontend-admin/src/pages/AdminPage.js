@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Eye, EyeOff, LogOut, Menu,
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
-  Clock, AlertCircle, RefreshCw, Sparkles
+  Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send
 } from 'lucide-react';
 import API from '../api';
 import AiAssistantTab from './AiAssistantTab';
@@ -93,6 +93,7 @@ export default function AdminPage() {
             {[
               { id: 'products', icon: Package, label: 'Products' },
               { id: 'orders', icon: ShoppingBag, label: 'Orders' },
+              { id: 'customers', icon: Users, label: 'Customers' },
               { id: 'categories', icon: Tag, label: 'Categories' },
               { id: 'stats', icon: BarChart2, label: 'Overview' },
               { id: 'ai', icon: Sparkles, label: 'AI Assistant' },
@@ -116,6 +117,7 @@ export default function AdminPage() {
       <main className="admin-main">
         {tab === 'products' && <ProductsTab />}
         {tab === 'orders' && <OrdersTab />}
+        {tab === 'customers' && <CustomersTab />}
         {tab === 'categories' && <CategoriesTab />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'ai' && <AiAssistantTab />}
@@ -742,6 +744,214 @@ function OrdersTab() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Message Modal ────────────────────────────────────────────────────────────
+function MessageModal({ customer, onClose }) {
+  const [subject, setSubject] = useState(`Your order at Bel's Haven`);
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState('');
+
+  const whatsappNumber = customer.phone?.replace(/\D/g, '');
+  const hasWhatsapp = whatsappNumber && whatsappNumber.length >= 9;
+  const waUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message || `Hello ${customer.name}, we're reaching out from Bel's Haven.`)}`;
+
+  const sendEmail = async () => {
+    if (!message.trim()) { setErr('Please enter a message.'); return; }
+    setSending(true);
+    setErr('');
+    try {
+      await API.post('/send-message/', { email: customer.email, subject, message });
+      setSent(true);
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to send. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Message Customer</h3>
+          <button className="btn-ghost modal-close" onClick={onClose}><X size={16} /></button>
+        </div>
+        <div className="modal-customer-info">
+          <strong>{customer.name}</strong>
+          <span>{customer.email}</span>
+          {customer.phone && <span>{customer.phone}</span>}
+        </div>
+        {sent ? (
+          <div className="modal-sent">
+            <Check size={24} style={{ color: '#4caf7d' }} />
+            <p>Email sent to {customer.email}</p>
+            <button className="btn-outline" style={{ marginTop: 12 }} onClick={onClose}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label>Subject</label>
+              <input className="input-field" value={subject} onChange={e => setSubject(e.target.value)} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label>Message</label>
+              <textarea
+                className="input-field"
+                rows={5}
+                placeholder="Type your message here..."
+                value={message}
+                onChange={e => { setMessage(e.target.value); setErr(''); }}
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+            {err && <p style={{ color: 'var(--error, #e05a5a)', fontSize: '0.8rem', marginBottom: 12 }}>{err}</p>}
+            <div className="modal-actions">
+              {hasWhatsapp && (
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary"
+                  style={{ display: 'inline-flex', gap: 8, background: '#25D366', borderColor: '#25D366' }}
+                >
+                  <MessageCircle size={15} />
+                  <span>WhatsApp</span>
+                </a>
+              )}
+              <button className="btn-primary" onClick={sendEmail} disabled={sending} style={{ display: 'inline-flex', gap: 8 }}>
+                {sending ? <><div className="spinner" /><span>Sending...</span></> : <><Mail size={15} /><span>Send Email</span></>}
+              </button>
+            </div>
+            {!hasWhatsapp && (
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 10 }}>
+                No phone number on file — email only.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Customers Tab ────────────────────────────────────────────────────────────
+function CustomersTab() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [messaging, setMessaging] = useState(null);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    API.get('/orders/all/')
+      .then(r => setOrders(r.data.results || r.data || []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const customers = Object.values(
+    orders.reduce((acc, order) => {
+      const key = order.customer_email;
+      if (!acc[key]) {
+        acc[key] = {
+          name: order.customer_name,
+          email: order.customer_email,
+          phone: order.customer_phone,
+          orders: 0,
+          spent: 0,
+          lastOrder: order.created_at,
+        };
+      }
+      acc[key].orders += 1;
+      if (order.payment_verified) acc[key].spent += parseFloat(order.total_amount || 0);
+      if (order.created_at > acc[key].lastOrder) acc[key].lastOrder = order.created_at;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.spent - a.spent);
+
+  const filtered = customers.filter(c =>
+    !search ||
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.email.toLowerCase().includes(search.toLowerCase()) ||
+    (c.phone || '').includes(search)
+  );
+
+  const totalCustomers = customers.length;
+  const totalRevenue = customers.reduce((s, c) => s + c.spent, 0);
+  const repeatCustomers = customers.filter(c => c.orders > 1).length;
+
+  return (
+    <div className="admin-section">
+      <h2 className="admin-section__title">Customers</h2>
+      <div className="stats-grid" style={{ marginBottom: 28 }}>
+        {[
+          { label: 'Total Customers', value: totalCustomers, color: 'gold' },
+          { label: 'Repeat Customers', value: repeatCustomers, color: 'green' },
+          { label: 'Total Revenue', value: `GHS ${totalRevenue.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`, color: 'blue' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className={`stat-card stat-card--${color}`}>
+            <p className="stat-card__label">{label}</p>
+            <p className="stat-card__value">{value}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <input
+          className="input-field"
+          style={{ maxWidth: 320 }}
+          placeholder="Search by name, email or phone..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+      {loading ? <div className="admin-loading"><div className="spinner" /></div> : (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Orders</th>
+                <th>Total Spent</th>
+                <th>Last Order</th>
+                <th>Contact</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(c => (
+                <tr key={c.email}>
+                  <td>
+                    <div>{c.name}</div>
+                    <small style={{ color: 'var(--text-muted)' }}>{c.email}</small>
+                  </td>
+                  <td style={{ fontSize: '0.82rem' }}>{c.phone || <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                  <td>{c.orders}</td>
+                  <td style={{ color: c.spent > 0 ? '#4caf7d' : 'var(--text-muted)' }}>
+                    {c.spent > 0 ? `GHS ${c.spent.toLocaleString('en-GH', { minimumFractionDigits: 2 })}` : '—'}
+                  </td>
+                  <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {new Date(c.lastOrder).toLocaleDateString()}
+                  </td>
+                  <td>
+                    <button
+                      className="btn-ghost"
+                      style={{ padding: '6px 12px', fontSize: '0.7rem', display: 'inline-flex', gap: 6 }}
+                      onClick={() => setMessaging(c)}
+                    >
+                      <Send size={12} /> Message
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={6} className="table-empty">No customers found</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {messaging && <MessageModal customer={messaging} onClose={() => setMessaging(null)} />}
     </div>
   );
 }

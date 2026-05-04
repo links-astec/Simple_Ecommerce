@@ -695,3 +695,68 @@
   .ai-tab { height: calc(100vh - 120px); }
   .ai-bubble { max-width: 90%; }
 }
+
+/* ── Message Modal ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-card {
+  background: var(--black-card);
+  border: 1px solid var(--black-border);
+  border-radius: var(--radius);
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+}
+
+.modal-close { padding: 4px; }
+
+.modal-customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  background: var(--black-soft);
+  border-radius: 2px;
+  border: 1px solid var(--black-border);
+  margin-bottom: 20px;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+
+.modal-customer-info strong { color: var(--text-primary); font-size: 0.9rem; }
+
+.modal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.modal-sent {
+  text-align: center;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
