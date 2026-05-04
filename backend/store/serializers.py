@@ -94,24 +94,27 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
-        order = Order.objects.create(**validated_data)
+        item_objects = []
         total = 0
         total_shipping = 0
         for item_data in items_data:
             product = Product.objects.get(id=item_data['product_id'])
             qty = int(item_data.get('quantity', 1))
             shipping = float(product.shipping_fee) if product.product_type == 'available' else 0
-            subtotal = float(product.price) * qty
+            total += float(product.price) * qty
+            total_shipping += shipping * qty
+            item_objects.append((product, qty, shipping))
+        order = Order.objects.create(
+            **validated_data,
+            total_amount=total + total_shipping,
+            shipping_fee=total_shipping,
+        )
+        for product, qty, shipping in item_objects:
             OrderItem.objects.create(
                 order=order, product=product, product_name=product.name,
                 product_type=product.product_type, quantity=qty,
                 unit_price=product.price, shipping_fee=shipping,
             )
-            total += subtotal
-            total_shipping += shipping * qty
-        order.total_amount = total + total_shipping
-        order.shipping_fee = total_shipping
-        order.save()
         return order
 
 
