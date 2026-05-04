@@ -185,7 +185,8 @@ class PaystackInitializeView(APIView):
             return Response({'error': 'Already paid'}, status=400)
 
         amount_kobo = int(float(order.total_amount) * 100)
-        callback_url = f"{settings.FRONTEND_URL}/payment/verify?reference={order.reference}"
+        base_callback = request.data.get('callback_url') or f"{settings.FRONTEND_URL}/payment/verify"
+        callback_url = f"{base_callback}?reference={order.reference}"
         payload = {
             'email': order.customer_email,
             'amount': amount_kobo,

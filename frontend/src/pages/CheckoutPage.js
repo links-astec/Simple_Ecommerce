@@ -51,12 +51,13 @@ export default function CheckoutPage() {
       };
 
       const { data: order } = await createOrder(orderData);
-      const { data: payment } = await initializePayment(order.order_id);
+      const callbackUrl = `${window.location.origin}/payment/verify`;
+      const { data: payment } = await initializePayment(order.order_id, callbackUrl);
 
-      // Redirect to Paystack
+      // Redirect to Paystack — clear cart only after we're sure we have the URL
       if (payment.authorization_url) {
         clearCart();
-        window.location.href = payment.authorization_url;
+        window.location.replace(payment.authorization_url);
       } else {
         toast.error('Could not initialize payment. Please try again.');
       }
@@ -73,7 +74,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && !loading) {
     navigate('/cart');
     return null;
   }
