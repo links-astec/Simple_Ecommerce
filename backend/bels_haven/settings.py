@@ -103,6 +103,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT', str(BASE_DIR / 'media')))
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

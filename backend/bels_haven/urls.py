@@ -3,10 +3,12 @@ from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
+from store.views import product_share
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('store.urls')),
+    path('share/<slug:slug>/', product_share, name='product-share'),
 ]
 
 # Serve media files in development

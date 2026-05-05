@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShoppingBag, ArrowLeft, Clock, Package, Truck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Clock, Package, Truck, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { getProduct } from '../api';
 import { useCart } from '../CartContext';
 import useLiveRefresh from '../useLiveRefresh';
@@ -58,6 +58,23 @@ export default function ProductPage() {
     toast.success(`${product.name} added to bag`);
   };
 
+  const handleShare = async () => {
+    const backendBase = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
+    const shareUrl = `${backendBase}/share/${product.slug}/`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.name, url: shareUrl });
+      } catch (_) {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied!');
+      } catch (_) {
+        toast.error('Could not copy link');
+      }
+    }
+  };
+
   const totalPrice = parseFloat(product.price) * qty;
 
 
@@ -111,7 +128,12 @@ export default function ProductPage() {
               {product.category && <span className="product-info__category">{product.category.name}</span>}
             </div>
 
-            <h1 className="product-info__name">{product.name}</h1>
+            <div className="product-info__name-row">
+              <h1 className="product-info__name">{product.name}</h1>
+              <button className="product-share-btn" onClick={handleShare} title="Share product">
+                <Share2 size={16} />
+              </button>
+            </div>
 
             <div className="product-info__price-row">
               <span className="product-info__price price">GH₵{parseFloat(product.price).toLocaleString('en-GH')}</span>

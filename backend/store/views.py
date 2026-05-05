@@ -1,5 +1,6 @@
 import hmac
 import hashlib
+import html as html_module
 import json
 import logging
 import requests
@@ -7,7 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import transaction, models
-from django.http import JsonResponse
+from django.http import HttpResponse, Http404, JsonResponse
 from django.utils import timezone
 from django.core.mail import send_mail
 from rest_framework import generics, status
@@ -397,6 +398,56 @@ With love, Bel's Haven 🌿
 
 def health(request):
     return JsonResponse({"status": "ok"})
+
+
+def product_share(request, slug):
+    """Serve an OG-tagged HTML page for WhatsApp/social link previews, then redirect to the SPA."""
+    try:
+        product = Product.objects.prefetch_related('images').get(slug=slug, status='active')
+    except Product.DoesNotExist:
+        raise Http404
+
+    primary_img = product.images.filter(is_primary=True).first() or product.images.first()
+    image_url = request.build_absolute_uri(primary_img.image.url) if primary_img else ''
+
+    frontend_url = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
+    product_url = f"{frontend_url}/shop/{product.slug}" if frontend_url else request.build_absolute_uri(f'/shop/{product.slug}')
+
+    esc = html_module.escape
+    name = esc(product.name)
+    description = esc((product.description or '')[:200])
+    price_display = f"GH₵{float(product.price):,.2f}"
+
+    og_image = f'<meta property="og:image" content="{esc(image_url)}">\n  <meta property="og:image:width" content="1200">\n  <meta property="og:image:height" content="630">\n  <meta name="twitter:image" content="{esc(image_url)}">' if image_url else ''
+
+    page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{name} — Bel&apos;s Haven</title>
+  <meta name="description" content="{description}">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="{name} — Bel&apos;s Haven">
+  <meta property="og:description" content="{description}">
+  <meta property="og:url" content="{esc(product_url)}">
+  <meta property="og:site_name" content="Bel&apos;s Haven">
+  {og_image}
+  <meta property="product:price:amount" content="{float(product.price)}">
+  <meta property="product:price:currency" content="GHS">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{name} — Bel&apos;s Haven">
+  <meta name="twitter:description" content="{description}">
+  <meta http-equiv="refresh" content="0;url={esc(product_url)}">
+  <link rel="canonical" href="{esc(product_url)}">
+  <style>body{{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#faf8f4;color:#4a3f2f}}</style>
+</head>
+<body>
+  <script>window.location.replace({json.dumps(product_url)});</script>
+  <p>{name} — {price_display} &mdash; <a href="{esc(product_url)}">View product</a></p>
+</body>
+</html>"""
+
+    return HttpResponse(page, content_type='text/html; charset=utf-8')
 
 
 class SiteSettingsView(APIView):
