@@ -323,3 +323,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .btn-primary, .btn-outline { min-height: 48px; }
   .input-field { min-height: 48px; font-size: 16px; } /* 16px prevents iOS zoom */
 }
+
+/* ── Small phones ── */
+@media (max-width: 480px) {
+  html { font-size: 15px; }
+  .btn-primary, .btn-outline { padding: 12px 24px; }
+}

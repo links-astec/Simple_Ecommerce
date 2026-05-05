@@ -162,19 +162,40 @@
 @media (max-width: 900px) {
   .navbar__inner {
     grid-template-columns: auto 1fr auto;
-    gap: 16px;
+    gap: 12px;
     padding: 0 16px;
   }
 
   .navbar__logo { grid-column: 2; }
   .navbar__links { display: none; }
   .navbar__cart { grid-column: 3; }
-  .navbar__menu-toggle { display: flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
+  .navbar__menu-toggle {
+    display: flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+  }
   .navbar__mobile { display: flex; }
+  .navbar__mobile--open { max-height: 480px; }
 }
 
 @media (max-width: 480px) {
+  .navbar { padding: 18px 0; }
+  .navbar--scrolled { padding: 12px 0; }
+  .navbar__inner { padding: 0 14px; gap: 8px; }
   .navbar__logo-text { font-size: 1.2rem; }
-  .navbar__logo-sub { font-size: 0.55rem; }
-  .navbar__mobile a { font-size: 0.7rem; padding: 18px 20px; min-height: 52px; display: flex; align-items: center; }
+  .navbar__logo-sub { font-size: 0.52rem; }
+  .navbar__mobile a {
+    font-size: 0.72rem;
+    padding: 18px 16px;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .navbar__logo-text { font-size: 1.1rem; }
+  .navbar__inner { padding: 0 12px; }
 }

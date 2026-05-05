@@ -144,17 +144,25 @@
 
 @media (max-width: 768px) {
   .shop-page { padding-top: 80px; }
-  .shop-page__header { padding: 32px 0 40px; }
-  .shop-page__title { font-size: 2.2rem; }
+  .shop-page__header { padding: 28px 0 36px; }
+  .shop-page__title { font-size: 2rem; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .shop-toolbar { flex-wrap: wrap; gap: 10px; }
-  .shop-search { max-width: 100%; flex: 1 1 180px; }
-  .filters-panel { padding: 16px; gap: 16px; }
+  .shop-search { max-width: 100%; flex: 1 1 160px; }
+  .filters-panel { padding: 16px; gap: 14px; }
 }
 
 @media (max-width: 480px) {
-  .shop-page__title { font-size: 1.8rem; }
+  .shop-page { padding-top: 72px; padding-bottom: 48px; }
+  .shop-page__header { padding: 20px 0 28px; }
+  .shop-page__title { font-size: 1.7rem; }
   .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .shop-toolbar { gap: 8px; }
-  .shop-count { width: 100%; text-align: left; margin-left: 0; }
+  .shop-search { font-size: 0.82rem; }
+  .shop-count { width: 100%; text-align: left; margin-left: 0; font-size: 0.7rem; }
+  .filters-panel { padding: 12px; gap: 10px; }
+}
+
+@media (max-width: 360px) {
+  .shop-grid { gap: 8px; }
 }
