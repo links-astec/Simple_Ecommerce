@@ -98,7 +98,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         total = 0
         total_shipping = 0
         for item_data in items_data:
-            product = Product.objects.get(id=item_data['product_id'])
+            try:
+                product = Product.objects.get(id=item_data['product_id'])
+            except (Product.DoesNotExist, Exception):
+                raise serializers.ValidationError(
+                    f"Product '{item_data.get('product_id')}' not found."
+                )
             qty = int(item_data.get('quantity', 1))
             shipping = float(product.shipping_fee) if product.product_type == 'available' else 0
             total += float(product.price) * qty

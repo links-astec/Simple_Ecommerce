@@ -18,8 +18,8 @@ def env_list(name, default=''):
     return [item.strip() for item in value.split(',') if item.strip()]
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.getenv('SECRET_KEY', '51i4h+mej6!%&-&jdbx2hik7b2bp3rit=29^#oqpsknhjjvezz')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+SECRET_KEY = os.environ['SECRET_KEY']  # must be set — no insecure fallback
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
 INSTALLED_APPS = [
@@ -113,14 +113,27 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = False  # Render handles SSL
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
     ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', '.onrender.com')
-    
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+    ]
+
 CORS_ALLOW_CREDENTIALS = True
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100,
 }
 
 # Email
@@ -137,7 +150,29 @@ ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', '')
 PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY', '')
 PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY', '')
 
+# Admin
+ADMIN_API_KEY = os.getenv('ADMIN_API_KEY', '')
+
 # WhatsApp
 WHATSAPP_NUMBER = os.getenv('WHATSAPP_NUMBER', '')
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'store': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

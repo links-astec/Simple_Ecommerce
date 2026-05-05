@@ -128,9 +128,9 @@ class Order(models.Model):
         return f"Order #{self.reference} - {self.customer_name}"
 
     def generate_reference(self):
-        import random, string
+        import secrets, string
         chars = string.ascii_uppercase + string.digits
-        return 'BH' + ''.join(random.choices(chars, k=8))
+        return 'BH' + ''.join(secrets.choice(chars) for _ in range(8))
 
     def save(self, *args, **kwargs):
         if not self.reference:

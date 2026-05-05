@@ -553,7 +553,13 @@
 .admin-loading { display: flex; justify-content: center; padding: 80px; }
 .admin-empty { text-align: center; color: var(--text-muted); padding: 60px; font-size: 0.9rem; grid-column: 1/-1; }
 
+.admin-search-input { max-width: 320px; width: 100%; }
+
 /* ── Responsive ── */
+@media (max-width: 600px) {
+  .admin-search-input { max-width: 100%; }
+}
+
 @media (max-width: 900px) {
   .admin-page { flex-direction: column; }
   .admin-sidebar {
@@ -694,6 +700,14 @@
   }
   .ai-tab { height: calc(100vh - 120px); }
   .ai-bubble { max-width: 90%; }
+  .admin-login__card { padding: 32px 20px; }
+  .modal-card { padding: 20px 16px; }
+  .modal-actions { flex-direction: column; }
+  .modal-actions .btn-primary,
+  .modal-actions .btn-outline { width: 100%; justify-content: center; }
+  .order-detail-grid { gap: 12px; }
+  .status-buttons { gap: 6px; }
+  .status-btn { padding: 7px 10px; font-size: 0.66rem; }
 }
 
 /* ── Message Modal ── */

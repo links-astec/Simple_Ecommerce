@@ -39,6 +39,10 @@ dist/
 # React
 frontend/build/
 frontend/.env
+frontend/.env.local
+frontend-admin/build/
+frontend-admin/.env
+frontend-admin/.env.local
 
 # Misc
 *.bak

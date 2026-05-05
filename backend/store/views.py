@@ -1,12 +1,17 @@
 import hmac
 import hashlib
 import json
+import logging
 import requests
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
+from django.db import transaction, models
 from django.utils import timezone
 from django.core.mail import send_mail
 from rest_framework import generics, status
 from rest_framework.decorators import api_view
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -16,6 +21,37 @@ from .serializers import (
     OrderCreateSerializer, OrderSerializer
 )
 
+logger = logging.getLogger(__name__)
+
+ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+# ── Admin auth ───────────────────────────────────────────────────────────────
+
+class IsAdminKey(BasePermission):
+    """Require X-Admin-Key header matching ADMIN_API_KEY setting."""
+    def has_permission(self, request, view):
+        key = request.headers.get('X-Admin-Key', '')
+        expected = getattr(settings, 'ADMIN_API_KEY', '')
+        if not expected or not key or key != expected:
+            if key:
+                logger.warning('Invalid admin key from %s', request.META.get('REMOTE_ADDR'))
+            return False
+        return True
+
+
+class AdminLoginView(APIView):
+    def post(self, request):
+        password = request.data.get('password', '')
+        expected = getattr(settings, 'ADMIN_API_KEY', '')
+        if not expected:
+            return Response({'error': 'Admin not configured'}, status=503)
+        if password == expected:
+            return Response({'token': expected})
+        logger.warning('Failed admin login from %s', request.META.get('REMOTE_ADDR'))
+        return Response({'error': 'Invalid password'}, status=401)
+
 
 # ── Categories ──────────────────────────────────────────────────────────────
 
@@ -23,10 +59,16 @@ class CategoryListView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+    def get_permissions(self):
+        if self.request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAdminKey()]
+        return []
+
 
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [IsAdminKey]
 
 
 # ── Products ─────────────────────────────────────────────────────────────────
@@ -34,9 +76,15 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 class ProductListView(generics.ListCreateAPIView):
     serializer_class = ProductListSerializer
 
+    def get_permissions(self):
+        if self.request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAdminKey()]
+        return []
+
     def get_queryset(self):
         qs = Product.objects.prefetch_related('images')
-        if self.request.query_params.get('admin') != '1':
+        is_admin = IsAdminKey().has_permission(self.request, self)
+        if not is_admin:
             qs = qs.filter(status='active')
         category = self.request.query_params.get('category')
         product_type = self.request.query_params.get('type')
@@ -80,6 +128,11 @@ class ProductListView(generics.ListCreateAPIView):
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = 'slug'
 
+    def get_permissions(self):
+        if self.request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAdminKey()]
+        return []
+
     def get_queryset(self):
         if self.request.method == 'GET':
             return Product.objects.filter(status='active').prefetch_related('images', 'category')
@@ -118,11 +171,16 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class ProductImageUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAdminKey]
 
     def post(self, request):
         image_file = request.FILES.get('image')
         if not image_file:
             return Response({'error': 'No image provided'}, status=400)
+        if image_file.content_type not in ALLOWED_IMAGE_TYPES:
+            return Response({'error': 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF'}, status=400)
+        if image_file.size > MAX_IMAGE_SIZE:
+            return Response({'error': 'File too large. Maximum 10 MB allowed'}, status=400)
         is_primary = request.data.get('is_primary', 'false') == 'true'
         img = ProductImage.objects.create(image=image_file, is_primary=is_primary)
         url = request.build_absolute_uri(img.image.url)
@@ -147,12 +205,19 @@ class OrderCreateView(APIView):
 
 class AdminOrderListView(generics.ListAPIView):
     serializer_class = OrderSerializer
+    permission_classes = [IsAdminKey]
 
     def get_queryset(self):
         return Order.objects.prefetch_related('items').order_by('-created_at')
 
 
 class OrderDetailView(APIView):
+    def get_permissions(self):
+        # GET is public (user tracks own order); PATCH is admin-only
+        if self.request.method == 'PATCH':
+            return [IsAdminKey()]
+        return []
+
     def get(self, request, reference):
         try:
             order = Order.objects.prefetch_related('items').get(reference=reference)
@@ -163,10 +228,12 @@ class OrderDetailView(APIView):
     def patch(self, request, reference):
         try:
             order = Order.objects.get(reference=reference)
-            for field in ['status', 'notes']:
+            allowed = {'status', 'notes'}
+            for field in allowed:
                 if field in request.data:
                     setattr(order, field, request.data[field])
             order.save()
+            logger.info('Admin updated order %s: status=%s', reference, order.status)
             return Response(OrderSerializer(order).data)
         except Order.DoesNotExist:
             return Response({'error': 'Order not found'}, status=404)
@@ -204,9 +271,10 @@ class PaystackInitializeView(APIView):
                     'access_code': data['data']['access_code'],
                     'reference': data['data']['reference'],
                 })
-            return Response({'error': data.get('message', 'Paystack error')}, status=400)
-        except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({'error': data.get('message', 'Payment initialization failed')}, status=400)
+        except Exception:
+            logger.exception('Payment initialization error for order %s', order_id)
+            return Response({'error': 'Payment initialization failed. Please try again.'}, status=500)
 
 
 class PaystackVerifyView(APIView):
@@ -226,21 +294,27 @@ class PaystackVerifyView(APIView):
             resp = requests.get(f'https://api.paystack.co/transaction/verify/{reference}', headers=headers, timeout=10)
             data = resp.json()
             if data.get('status') and data['data']['status'] == 'success':
-                order.payment_verified = True
-                order.status = Order.STATUS_PAID
-                order.payment_date = timezone.now()
-                order.paystack_reference = reference
-                order.save()
-                for item in order.items.all():
-                    if item.product and item.product_type == 'available':
-                        item.product.stock_quantity = max(0, item.product.stock_quantity - item.quantity)
-                        item.product.save()
+                with transaction.atomic():
+                    order = Order.objects.select_for_update().get(reference=reference)
+                    if order.payment_verified:
+                        return Response({'status': 'already_verified', 'order': OrderSerializer(order).data})
+                    order.payment_verified = True
+                    order.status = Order.STATUS_PAID
+                    order.payment_date = timezone.now()
+                    order.paystack_reference = reference
+                    order.save()
+                    for item in order.items.select_related('product'):
+                        if item.product and item.product_type == 'available':
+                            Product.objects.filter(pk=item.product.pk).update(
+                                stock_quantity=models.F('stock_quantity') - item.quantity
+                            )
                 _send_customer_receipt(order)
                 _send_admin_notification(order)
                 return Response({'status': 'success', 'order': OrderSerializer(order).data})
             return Response({'status': 'failed', 'message': 'Payment not successful'}, status=400)
-        except Exception as e:
-            return Response({'error': str(e)}, status=500)
+        except Exception:
+            logger.exception('Payment verification error for reference %s', reference)
+            return Response({'error': 'Verification failed. Please contact support.'}, status=500)
 
 
 class PaystackWebhookView(APIView):
@@ -325,12 +399,18 @@ def health(request):
 
 
 class SendCustomerMessageView(APIView):
+    permission_classes = [IsAdminKey]
+
     def post(self, request):
-        email = request.data.get('email')
-        subject = request.data.get('subject', "Message from Bel's Haven")
-        message = request.data.get('message')
+        email = request.data.get('email', '').strip()
+        subject = request.data.get('subject', "Message from Bel's Haven").strip()
+        message = request.data.get('message', '').strip()
         if not email or not message:
             return Response({'error': 'Email and message required'}, status=400)
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            return Response({'error': 'Invalid email address'}, status=400)
         try:
             send_mail(
                 subject=subject,
@@ -339,9 +419,11 @@ class SendCustomerMessageView(APIView):
                 recipient_list=[email],
                 fail_silently=False,
             )
+            logger.info('Admin sent message to %s', email)
             return Response({'status': 'sent'})
-        except Exception as e:
-            return Response({'error': str(e)}, status=500)
+        except Exception:
+            logger.exception('Failed to send message to %s', email)
+            return Response({'error': 'Failed to send message. Please try again.'}, status=500)
 
 def _send_admin_notification(order):
     notify_email = getattr(settings, 'NOTIFY_EMAIL', None) or getattr(settings, 'ADMIN_EMAIL', None)

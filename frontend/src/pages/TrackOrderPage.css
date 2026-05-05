@@ -251,3 +251,13 @@
   .track-result { padding: 20px 16px; }
   .track-timeline { gap: 0; }
 }
+
+@media (max-width: 480px) {
+  .track-page { padding: 70px 0 48px; }
+  .track-header h1 { font-size: 1.8rem; }
+  .track-ref { font-size: 1.2rem; }
+  .track-step { min-width: 60px; }
+  .track-step__label { font-size: 0.55rem; }
+  .track-result__top { flex-direction: column; gap: 10px; }
+  .track-card { padding: 16px; }
+}

@@ -108,3 +108,15 @@
   .order-card__header { padding: 28px 24px; }
   .order-section { padding: 24px; }
 }
+
+@media (max-width: 480px) {
+  .order-page { padding: 80px 0 60px; }
+  .order-card__header { padding: 20px 16px; }
+  .order-card__header h1 { font-size: 1.5rem; }
+  .order-section { padding: 16px; }
+  .order-item { gap: 10px; }
+  .order-item__name { font-size: 0.82rem; }
+  .order-total-row--grand { font-size: 0.9rem; }
+  .order-total-row--grand .price { font-size: 1rem; }
+  .order-whatsapp { padding: 16px; margin: 12px; }
+}

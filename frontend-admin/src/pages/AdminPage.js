@@ -4,25 +4,28 @@ import {
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
   Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send
 } from 'lucide-react';
-import API from '../api';
+import API, { adminLogin, getAdminToken } from '../api';
 import AiAssistantTab from './AiAssistantTab';
 import './AdminPage.css';
-
-const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'belshaven2024';
-
-
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const submit = () => {
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem('bh_admin', '1');
+  const submit = async () => {
+    if (!password.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await adminLogin(password);
+      sessionStorage.setItem('bh_admin_token', data.token);
       onLogin();
-    } else {
+    } catch {
       setError('Incorrect password. Try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,8 +48,8 @@ function LoginScreen({ onLogin }) {
             autoFocus
           />
           {error && <p className="admin-login__error"><AlertCircle size={14} />{error}</p>}
-          <button className="btn-primary" style={{ width: '100%', marginTop: 8 }} onClick={submit}>
-            <span>Enter Dashboard</span>
+          <button className="btn-primary" style={{ width: '100%', marginTop: 8 }} onClick={submit} disabled={loading}>
+            {loading ? <><div className="spinner" /><span>Verifying...</span></> : <span>Enter Dashboard</span>}
           </button>
         </div>
       </div>
@@ -56,7 +59,7 @@ function LoginScreen({ onLogin }) {
 
 // ─── Main Admin ──────────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem('bh_admin') === '1');
+  const [authed, setAuthed] = useState(() => !!getAdminToken());
   const [tab, setTab] = useState('products');
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -108,7 +111,7 @@ export default function AdminPage() {
               </button>
             ))}
           </nav>
-          <button className="admin-nav__logout" onClick={() => { sessionStorage.removeItem('bh_admin'); setAuthed(false); }}>
+          <button className="admin-nav__logout" onClick={() => { sessionStorage.removeItem('bh_admin_token'); setAuthed(false); }}>
             <LogOut size={16} /> <span>Logout</span>
           </button>
         </div>
@@ -900,8 +903,7 @@ function CustomersTab() {
       </div>
       <div style={{ marginBottom: 20 }}>
         <input
-          className="input-field"
-          style={{ maxWidth: 320 }}
+          className="input-field admin-search-input"
           placeholder="Search by name, email or phone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
