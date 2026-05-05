@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './CartContext';
@@ -12,19 +12,16 @@ import CheckoutPage from './pages/CheckoutPage';
 import PaymentVerifyPage from './pages/PaymentVerifyPage';
 import OrderConfirmPage from './pages/OrderConfirmPage';
 import TrackOrderPage from './pages/TrackOrderPage';
+import MaintenancePage from './pages/MaintenancePage';
+import { getSiteSettings } from './api';
 
-function RouteMetadata() {
+function Layout() {
   useEffect(() => {
     document.title = "Bel's Haven";
   }, []);
 
-  return null;
-}
-
-function Layout() {
   return (
     <>
-      <RouteMetadata />
       <Navbar />
       <main>
         <Routes>
@@ -44,6 +41,20 @@ function Layout() {
 }
 
 export default function App() {
+  const [maintenance, setMaintenance] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    getSiteSettings()
+      .then(r => setMaintenance(r.data.maintenance))
+      .catch(() => {})
+      .finally(() => setChecked(true));
+  }, []);
+
+  if (!checked) return null;
+
+  if (maintenance) return <MaintenancePage />;
+
   return (
     <CartProvider>
       <Router>

@@ -16,7 +16,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Category, Product, ProductImage, Order, OrderItem
+from .models import Category, Product, ProductImage, Order, OrderItem, SiteSettings
 from .serializers import (
     CategorySerializer, ProductListSerializer, ProductDetailSerializer,
     OrderCreateSerializer, OrderSerializer
@@ -397,6 +397,21 @@ With love, Bel's Haven 🌿
 
 def health(request):
     return JsonResponse({"status": "ok"})
+
+
+class SiteSettingsView(APIView):
+    def get(self, request):
+        s = SiteSettings.get()
+        return Response({'maintenance': s.maintenance_mode})
+
+    def patch(self, request):
+        if not IsAdminKey().has_permission(request, self):
+            return Response({'error': 'Unauthorized'}, status=403)
+        s = SiteSettings.get()
+        if 'maintenance' in request.data:
+            s.maintenance_mode = bool(request.data['maintenance'])
+            s.save()
+        return Response({'maintenance': s.maintenance_mode})
 
 
 class SendCustomerMessageView(APIView):

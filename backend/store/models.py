@@ -155,6 +155,21 @@ class OrderItem(models.Model):
         return self.unit_price * self.quantity
 
 
+class SiteSettings(models.Model):
+    maintenance_mode = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = 'Site Settings'
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'Site Settings'
+
+
 class ShippingNotification(models.Model):
     """Track when admin notifies preorder customers about shipping"""
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='shipping_notifications')

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, ProductImage, Order, OrderItem
+from .models import Category, Product, ProductImage, Order, OrderItem, SiteSettings
 
 
 class ProductImageSerializer(serializers.ModelSerializer):

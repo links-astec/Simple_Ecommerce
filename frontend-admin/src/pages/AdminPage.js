@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Eye, EyeOff, LogOut, Menu,
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
-  Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send
+  Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send, Settings
 } from 'lucide-react';
 import API, { adminLogin, getAdminToken } from '../api';
 import AiAssistantTab from './AiAssistantTab';
@@ -100,6 +100,7 @@ export default function AdminPage() {
               { id: 'categories', icon: Tag, label: 'Categories' },
               { id: 'stats', icon: BarChart2, label: 'Overview' },
               { id: 'ai', icon: Sparkles, label: 'AI Assistant' },
+              { id: 'settings', icon: Settings, label: 'Settings' },
             ].map(({ id, icon: Icon, label }) => (
               <button
                 key={id}
@@ -124,6 +125,7 @@ export default function AdminPage() {
         {tab === 'categories' && <CategoriesTab />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'ai' && <AiAssistantTab />}
+        {tab === 'settings' && <SettingsTab />}
       </main>
     </div>
   );
@@ -960,6 +962,78 @@ function CustomersTab() {
         </div>
       )}
       {messaging && <MessageModal customer={messaging} onClose={() => setMessaging(null)} />}
+    </div>
+  );
+}
+
+// ─── Settings Tab ─────────────────────────────────────────────────────────────
+function SettingsTab() {
+  const [maintenance, setMaintenance] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    API.get('/settings/')
+      .then(r => setMaintenance(r.data.maintenance))
+      .catch(() => setError('Could not load settings.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggle = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const r = await API.patch('/settings/', { maintenance: !maintenance });
+      setMaintenance(r.data.maintenance);
+    } catch {
+      setError('Failed to save. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="admin-section">
+      <h2 className="admin-section__title">Settings</h2>
+
+      <div className="admin-form-card">
+        <h3>Maintenance Mode</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.7 }}>
+          When turned on, the user site shows a "We'll be right back" page.
+          Customers cannot browse or place orders until you turn it off.
+        </p>
+
+        {loading ? (
+          <div className="admin-loading" style={{ padding: 24 }}><div className="spinner" /></div>
+        ) : (
+          <>
+            <label className="toggle-label" style={{ marginBottom: 20 }}>
+              <input type="checkbox" checked={!!maintenance} onChange={toggle} disabled={saving} />
+              <div className="toggle-track"><div className="toggle-thumb" /></div>
+              <span style={{ fontSize: '0.88rem', color: maintenance ? 'var(--error)' : 'var(--text-secondary)' }}>
+                {saving ? 'Saving…' : maintenance ? 'Maintenance mode is ON — site is hidden from customers' : 'Maintenance mode is OFF — site is live'}
+              </span>
+            </label>
+
+            {maintenance && (
+              <div style={{
+                padding: '14px 16px',
+                background: 'rgba(192, 57, 43, 0.07)',
+                border: '1px solid rgba(192, 57, 43, 0.2)',
+                borderRadius: 2,
+                fontSize: '0.82rem',
+                color: 'var(--error)',
+                lineHeight: 1.6,
+              }}>
+                The user site is currently showing the maintenance page. Turn off maintenance mode when you're ready to go live again.
+              </div>
+            )}
+
+            {error && <p style={{ marginTop: 12, fontSize: '0.82rem', color: 'var(--error)' }}>{error}</p>}
+          </>
+        )}
+      </div>
     </div>
   );
 }

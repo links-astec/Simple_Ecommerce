@@ -24,6 +24,9 @@ urlpatterns = [
     path('payment/verify/', views.PaystackVerifyView.as_view(), name='payment-verify'),
     path('payment/webhook/', views.PaystackWebhookView.as_view(), name='payment-webhook'),
 
+    # Site settings (GET public, PATCH admin-only)
+    path('settings/', views.SiteSettingsView.as_view(), name='site-settings'),
+
     # Admin only
     path('product-images/', views.ProductImageUploadView.as_view(), name='product-image-upload'),
     path('send-message/', views.SendCustomerMessageView.as_view(), name='send-message'),
