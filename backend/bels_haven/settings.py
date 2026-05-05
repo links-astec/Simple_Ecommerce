@@ -10,6 +10,7 @@ from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "cache-control",
     "pragma",
+    "x-admin-key",
 ]
 def env_list(name, default=''):
     value = os.getenv(name, default)
