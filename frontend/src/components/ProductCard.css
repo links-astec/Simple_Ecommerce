@@ -17,12 +17,15 @@
 
 .product-card__image-wrap {
   position: relative;
-  aspect-ratio: 3 / 4;
+  padding-top: 133.33%; /* 3:4 ratio, works on all browsers */
   overflow: hidden;
   background: var(--black-soft);
 }
 
 .product-card__image {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -34,6 +37,9 @@
 }
 
 .product-card__placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: flex;

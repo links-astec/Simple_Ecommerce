@@ -34,17 +34,27 @@
 
 /* ── Images ── */
 .product-images__main {
-  aspect-ratio: 3/4;
   position: relative;
+  padding-top: 133.33%; /* 3:4 ratio, works on all browsers */
   background: var(--black-soft);
   border: 1px solid var(--black-border);
   overflow: hidden;
   border-radius: var(--radius);
 }
 
-.product-images__main img { width: 100%; height: 100%; object-fit: cover; }
+.product-images__main img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 .product-images__placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: flex;
