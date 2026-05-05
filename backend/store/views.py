@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import transaction, models
+from django.http import JsonResponse
 from django.utils import timezone
 from django.core.mail import send_mail
 from rest_framework import generics, status
@@ -392,7 +393,7 @@ With love, Bel's Haven 🌿
                   from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[order.customer_email], fail_silently=True)
     except Exception:
         pass
-from django.http import JsonResponse
+
 
 def health(request):
     return JsonResponse({"status": "ok"})

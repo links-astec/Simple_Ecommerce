@@ -278,16 +278,20 @@ function ProductsTab() {
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState('all');
 
   const load = useCallback(() => {
     setLoading(true);
+    setLoadError('');
     Promise.all([
       API.get('/products/'),
       API.get('/categories/'),
     ]).then(([p, c]) => {
       setProducts(p.data.results || p.data || []);
       setCategories(c.data.results || c.data || []);
+    }).catch(() => {
+      setLoadError('Failed to load products. Check that REACT_APP_API_URL is set correctly.');
     }).finally(() => setLoading(false));
   }, []);
 
@@ -338,6 +342,8 @@ function ProductsTab() {
           </button>
         ))}
       </div>
+
+      {loadError && <p style={{ color: 'var(--error)', fontSize: '0.85rem', marginBottom: 16 }}>{loadError}</p>}
 
       {loading ? <div className="admin-loading"><div className="spinner" /></div> : (
         <div className="product-admin-grid">
