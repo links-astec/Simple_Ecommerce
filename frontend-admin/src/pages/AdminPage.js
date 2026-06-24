@@ -1195,7 +1195,7 @@ function SettingsTab() {
     setExporting(fmt);
     try {
       const res = await API.get(`/export/?format=${fmt}`, { responseType: 'blob' });
-      const ext = fmt === 'excel' ? 'xlsx' : 'json';
+      const ext = fmt === 'excel' ? 'xlsx' : fmt === 'pdf' ? 'pdf' : 'json';
       const date = new Date().toISOString().slice(0, 10);
       const blob = new Blob([res.data]);
       const url = URL.createObjectURL(blob);
@@ -1206,7 +1206,7 @@ function SettingsTab() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success(`${fmt === 'excel' ? 'Excel' : 'JSON'} backup downloaded`);
+      toast.success(`${fmt === 'excel' ? 'Excel' : fmt === 'pdf' ? 'PDF' : 'JSON'} backup downloaded`);
     } catch {
       toast.error('Failed to export. Try again.');
     } finally {
@@ -1292,6 +1292,19 @@ function SettingsTab() {
               <span>Spreadsheet with separate sheets per data type</span>
             </div>
             {exporting === 'excel' ? <div className="spinner" /> : <Download size={16} />}
+          </button>
+
+          <button
+            className="export-btn"
+            onClick={() => downloadBackup('pdf')}
+            disabled={!!exporting}
+          >
+            <FileText size={20} />
+            <div className="export-btn__text">
+              <strong>{exporting === 'pdf' ? 'Exporting...' : 'Download PDF'}</strong>
+              <span>Formatted report with tables, easy to print or share</span>
+            </div>
+            {exporting === 'pdf' ? <div className="spinner" /> : <Download size={16} />}
           </button>
         </div>
 

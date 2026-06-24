@@ -694,6 +694,83 @@ class DataExportView(APIView):
             response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.xlsx"'
             return response
 
+        if fmt == 'pdf':
+            from io import BytesIO
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+
+            buf = BytesIO()
+            doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm, topMargin=20*mm, bottomMargin=15*mm)
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle('SectionTitle', parent=styles['Heading2'], textColor=colors.HexColor('#8a6520'), spaceAfter=8)
+            small = ParagraphStyle('Small', parent=styles['Normal'], fontSize=7, leading=9)
+            elements = []
+
+            elements.append(Paragraph(f"Bel's Haven — Data Backup", styles['Title']))
+            elements.append(Paragraph(f"Exported: {now.strftime('%B %d, %Y at %H:%M')}", styles['Normal']))
+            elements.append(Spacer(1, 10*mm))
+
+            def make_table(title, headers, rows, col_widths=None):
+                elements.append(Paragraph(title, title_style))
+                if not rows:
+                    elements.append(Paragraph("No data", styles['Normal']))
+                    elements.append(Spacer(1, 6*mm))
+                    return
+                data_rows = [[Paragraph(str(h), styles['Normal']) for h in headers]]
+                for r in rows:
+                    data_rows.append([Paragraph(str(r.get(h, '') or ''), small) for h in headers])
+                t = Table(data_rows, colWidths=col_widths, repeatRows=1)
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f4f0e8')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#4a3f2f')),
+                    ('FONTSIZE', (0, 0), (-1, 0), 8),
+                    ('FONTSIZE', (0, 1), (-1, -1), 7),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e8e0d0')),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 3),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#faf8f4')]),
+                ]))
+                elements.append(t)
+                elements.append(Spacer(1, 8*mm))
+
+            make_table(f"Categories ({len(categories)})",
+                       ['name', 'slug', 'description'],
+                       categories,
+                       [45*mm, 40*mm, 95*mm])
+
+            parent_products = [p for p in products if not p['parent_slug']]
+            make_table(f"Products ({len(parent_products)})",
+                       ['name', 'category', 'price', 'stock_quantity', 'product_type', 'status'],
+                       parent_products,
+                       [50*mm, 30*mm, 25*mm, 20*mm, 25*mm, 20*mm])
+
+            variant_products = [p for p in products if p['parent_slug']]
+            if variant_products:
+                make_table(f"Product Variants ({len(variant_products)})",
+                           ['parent_slug', 'variant_label', 'price', 'stock_quantity', 'shipping_fee'],
+                           variant_products,
+                           [40*mm, 35*mm, 30*mm, 25*mm, 30*mm])
+
+            make_table(f"Orders ({len(orders)})",
+                       ['reference', 'customer_name', 'customer_email', 'status', 'total_amount', 'created_at'],
+                       orders,
+                       [25*mm, 35*mm, 45*mm, 20*mm, 25*mm, 30*mm])
+
+            make_table(f"Customers ({len(customers)})",
+                       ['name', 'email', 'phone', 'city', 'country'],
+                       customers,
+                       [35*mm, 50*mm, 35*mm, 30*mm, 30*mm])
+
+            doc.build(elements)
+            buf.seek(0)
+            response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.pdf"'
+            return response
+
         data = {
             'exported_at': now.isoformat(),
             'categories': categories,
