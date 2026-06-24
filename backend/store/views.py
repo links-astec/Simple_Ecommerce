@@ -696,32 +696,39 @@ class DataExportView(APIView):
 
         if fmt == 'pdf':
             from io import BytesIO
+            from xml.sax.saxutils import escape as xml_escape
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import A4
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib.units import mm
             from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
+            def safe(val):
+                s = str(val) if val is not None else ''
+                if len(s) > 120:
+                    s = s[:120] + '...'
+                return xml_escape(s)
+
             buf = BytesIO()
             doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm, topMargin=20*mm, bottomMargin=15*mm)
             styles = getSampleStyleSheet()
             title_style = ParagraphStyle('SectionTitle', parent=styles['Heading2'], textColor=colors.HexColor('#8a6520'), spaceAfter=8)
-            small = ParagraphStyle('Small', parent=styles['Normal'], fontSize=7, leading=9)
+            small = ParagraphStyle('Small', parent=styles['Normal'], fontSize=7, leading=9, wordWrap='CJK')
             elements = []
 
-            elements.append(Paragraph(f"Bel's Haven — Data Backup", styles['Title']))
-            elements.append(Paragraph(f"Exported: {now.strftime('%B %d, %Y at %H:%M')}", styles['Normal']))
+            elements.append(Paragraph("Bel&#8217;s Haven &#8212; Data Backup", styles['Title']))
+            elements.append(Paragraph(safe(f"Exported: {now.strftime('%B %d, %Y at %H:%M')}"), styles['Normal']))
             elements.append(Spacer(1, 10*mm))
 
             def make_table(title, headers, rows, col_widths=None):
-                elements.append(Paragraph(title, title_style))
+                elements.append(Paragraph(safe(title), title_style))
                 if not rows:
                     elements.append(Paragraph("No data", styles['Normal']))
                     elements.append(Spacer(1, 6*mm))
                     return
-                data_rows = [[Paragraph(str(h), styles['Normal']) for h in headers]]
+                data_rows = [[Paragraph(safe(h), styles['Normal']) for h in headers]]
                 for r in rows:
-                    data_rows.append([Paragraph(str(r.get(h, '') or ''), small) for h in headers])
+                    data_rows.append([Paragraph(safe(r.get(h, '')), small) for h in headers])
                 t = Table(data_rows, colWidths=col_widths, repeatRows=1)
                 t.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f4f0e8')),
