@@ -58,11 +58,14 @@ export default function ProductPage() {
 
   const variants = product.variants || [];
   const hasVariants = variants.length > 0;
-  const active = selectedVariant || product;
+  const active = hasVariants ? (selectedVariant || variants[0]) : product;
 
   const isPreorder = (hasVariants ? active.product_type : product.product_type) === 'preorder';
-  const stock = hasVariants ? active.stock_quantity : product.stock_quantity;
-  const isSoldOut = stock === 0;
+  const variantStock = hasVariants ? active.stock_quantity : null;
+  const totalVariantStock = hasVariants ? variants.reduce((sum, v) => sum + (v.stock_quantity || 0), 0) : null;
+  const stock = hasVariants ? (variantStock ?? 0) : product.stock_quantity;
+  const isSoldOut = hasVariants ? totalVariantStock === 0 : stock === 0;
+  const isVariantSoldOut = hasVariants && stock === 0;
   const price = parseFloat(hasVariants ? active.price : product.price);
   const shippingFee = parseFloat(hasVariants ? active.shipping_fee : product.shipping_fee);
   const images = hasVariants && active.images?.length > 0 ? active.images : (product.images_list || []);
@@ -78,7 +81,7 @@ export default function ProductPage() {
   };
 
   const handleAdd = () => {
-    if (isSoldOut) return;
+    if (isSoldOut || isVariantSoldOut) return;
     const cartItem = {
       id: hasVariants ? active.id : product.id,
       name: hasVariants && active.variant_label ? `${product.name} (${active.variant_label})` : product.name,
@@ -159,7 +162,8 @@ export default function ProductPage() {
             <div className="product-info__badges">
               {isPreorder && <span className="badge badge-preorder">Pre-order</span>}
               {!isPreorder && !isSoldOut && <span className="badge badge-available">In Stock</span>}
-              {isSoldOut && <span className="badge badge-sold-out">Sold Out</span>}
+              {isSoldOut && <span className="badge badge-sold-out">All Sold Out</span>}
+              {!isSoldOut && isVariantSoldOut && <span className="badge badge-sold-out">This option sold out</span>}
               {product.category && <span className="product-info__category">{product.category.name}</span>}
             </div>
 
@@ -242,7 +246,7 @@ export default function ProductPage() {
             </div>
 
             {/* Quantity & Add */}
-            {!isSoldOut && (
+            {!isVariantSoldOut && !isSoldOut && (
               <div className="product-info__actions">
                 <div className="qty-selector">
                   <button onClick={() => setQty(q => Math.max(1, q-1))}>−</button>
@@ -256,9 +260,15 @@ export default function ProductPage() {
               </div>
             )}
 
+            {isVariantSoldOut && !isSoldOut && (
+              <div className="product-info__sold-out">
+                <p>"{active.variant_label}" is currently sold out. Try another option above.</p>
+              </div>
+            )}
+
             {isSoldOut && (
               <div className="product-info__sold-out">
-                <p>{hasVariants && active.variant_label ? `"${active.variant_label}" is` : 'This item is'} currently sold out. {hasVariants ? 'Try another option above.' : ''}</p>
+                <p>This item is currently sold out.</p>
               </div>
             )}
 

@@ -31,8 +31,9 @@ export default function ProductCard({ product }) {
         }
         <div className="product-card__badges">
           {isPreorder && <span className="badge badge-preorder">Pre-order</span>}
-          {!isPreorder && !isSoldOut && <span className="badge badge-available">In Stock</span>}
-          {isSoldOut && <span className="badge badge-sold-out">Sold Out</span>}
+          {!isPreorder && !hasVariants && !isSoldOut && <span className="badge badge-available">In Stock</span>}
+          {!hasVariants && isSoldOut && <span className="badge badge-sold-out">Sold Out</span>}
+          {hasVariants && isSoldOut && <span className="badge badge-sold-out">Sold Out</span>}
         </div>
         {canAdd && (
           <button className="product-card__quick-add" onClick={handleAdd}>
