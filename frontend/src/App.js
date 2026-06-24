@@ -1,19 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './CartContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import HomePage from './pages/HomePage';
-import ShopPage from './pages/ShopPage';
-import ProductPage from './pages/ProductPage';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
-import PaymentVerifyPage from './pages/PaymentVerifyPage';
-import OrderConfirmPage from './pages/OrderConfirmPage';
-import TrackOrderPage from './pages/TrackOrderPage';
 import MaintenancePage from './pages/MaintenancePage';
 import { getSiteSettings } from './api';
+
+const HomePage = lazy(() => import('./pages/HomePage'));
+const ShopPage = lazy(() => import('./pages/ShopPage'));
+const ProductPage = lazy(() => import('./pages/ProductPage'));
+const CartPage = lazy(() => import('./pages/CartPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const PaymentVerifyPage = lazy(() => import('./pages/PaymentVerifyPage'));
+const OrderConfirmPage = lazy(() => import('./pages/OrderConfirmPage'));
+const TrackOrderPage = lazy(() => import('./pages/TrackOrderPage'));
+
+function PageLoader() {
+  return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" style={{ width: 28, height: 28, borderWidth: 2 }} /></div>;
+}
 
 function Layout() {
   useEffect(() => {
@@ -24,16 +29,18 @@ function Layout() {
     <>
       <Navbar />
       <main>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/shop/:slug" element={<ProductPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/payment/verify" element={<PaymentVerifyPage />} />
-          <Route path="/order/:reference" element={<OrderConfirmPage />} />
-          <Route path="/track-order" element={<TrackOrderPage />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/shop/:slug" element={<ProductPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/payment/verify" element={<PaymentVerifyPage />} />
+            <Route path="/order/:reference" element={<OrderConfirmPage />} />
+            <Route path="/track-order" element={<TrackOrderPage />} />
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
     </>
@@ -42,16 +49,12 @@ function Layout() {
 
 export default function App() {
   const [maintenance, setMaintenance] = useState(false);
-  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     getSiteSettings()
-      .then(r => setMaintenance(r.data.maintenance))
-      .catch(() => {})
-      .finally(() => setChecked(true));
+      .then(r => { if (r.data.maintenance) setMaintenance(true); })
+      .catch(() => {});
   }, []);
-
-  if (!checked) return null;
 
   if (maintenance) return <MaintenancePage />;
 

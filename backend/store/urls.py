@@ -28,6 +28,9 @@ urlpatterns = [
     # Site settings (GET public, PATCH admin-only)
     path('settings/', views.SiteSettingsView.as_view(), name='site-settings'),
 
+    # Data export (admin-only)
+    path('export/', views.DataExportView.as_view(), name='data-export'),
+
     # Admin only
     path('product-images/', views.ProductImageUploadView.as_view(), name='product-image-upload'),
     path('send-message/', views.SendCustomerMessageView.as_view(), name='send-message'),

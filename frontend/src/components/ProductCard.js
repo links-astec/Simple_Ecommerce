@@ -8,8 +8,9 @@ import './ProductCard.css';
 export default function ProductCard({ product }) {
   const { addItem } = useCart();
   const isPreorder = product.product_type === 'preorder';
-  const isSoldOut = product.stock_quantity === 0;
   const hasVariants = product.variant_count > 0;
+  const stock = hasVariants ? (product.total_stock ?? product.stock_quantity) : product.stock_quantity;
+  const isSoldOut = stock === 0;
   const canAdd = !isSoldOut && !hasVariants;
 
   const handleAdd = (e) => {
@@ -25,7 +26,7 @@ export default function ProductCard({ product }) {
     <Link to={`/shop/${product.slug}`} className="product-card">
       <div className="product-card__image-wrap">
         {primaryImage
-          ? <img src={primaryImage} alt={product.name} className="product-card__image" />
+          ? <img src={primaryImage} alt={product.name} className="product-card__image" loading="lazy" onError={e => { e.target.style.display = 'none'; }} />
           : <div className="product-card__placeholder"><Package size={32} /></div>
         }
         <div className="product-card__badges">

@@ -258,7 +258,7 @@ export default function ProductPage() {
 
             {isSoldOut && (
               <div className="product-info__sold-out">
-                <p>{hasVariants && active.variant_label ? `${active.variant_label} is` : 'This item is'} currently sold out.</p>
+                <p>{hasVariants && active.variant_label ? `"${active.variant_label}" is` : 'This item is'} currently sold out. {hasVariants ? 'Try another option above.' : ''}</p>
               </div>
             )}
 

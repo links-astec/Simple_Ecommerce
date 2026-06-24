@@ -133,7 +133,7 @@ export default function HomePage() {
                 <Link key={cat.id} to={`/shop?category=${cat.slug}`} className="category-card">
                   <div className="category-card__image">
                     {cat.image
-                      ? <img src={cat.image} alt={cat.name} />
+                      ? <img src={cat.image} alt={cat.name} loading="lazy" />
                       : <div className="category-card__placeholder" />
                     }
                     <div className="category-card__overlay" />

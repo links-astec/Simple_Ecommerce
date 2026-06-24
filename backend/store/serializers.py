@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import serializers
 from .models import Category, Product, ProductImage, Order, OrderItem, SiteSettings
 
@@ -24,6 +25,8 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'description', 'image', 'product_count']
 
     def get_product_count(self, obj):
+        if hasattr(obj, '_product_count'):
+            return obj._product_count
         return obj.products.filter(status='active', parent__isnull=True).count()
 
 
@@ -38,6 +41,8 @@ class ProductListSerializer(serializers.ModelSerializer):
         queryset=Product.objects.all(), allow_null=True, required=False
     )
 
+    total_stock = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = [
@@ -45,7 +50,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'product_type', 'status', 'stock_quantity', 'delivery_timeframe',
             'preorder_eta', 'preorder_available_date', 'preorder_shipped',
             'preorder_shipping_fee', 'is_featured', 'category', 'category_name',
-            'primary_image', 'variant_label', 'variant_count', 'parent',
+            'primary_image', 'variant_label', 'variant_count', 'parent', 'total_stock',
         ]
 
     def get_primary_image(self, obj):
@@ -64,6 +69,17 @@ class ProductListSerializer(serializers.ModelSerializer):
         if hasattr(obj, '_prefetched_objects_cache') and 'variants' in obj._prefetched_objects_cache:
             return len([v for v in obj.variants.all() if v.status == 'active'])
         return obj.variants.filter(status='active').count()
+
+    def get_total_stock(self, obj):
+        if hasattr(obj, '_prefetched_objects_cache') and 'variants' in obj._prefetched_objects_cache:
+            active_variants = [v for v in obj.variants.all() if v.status == 'active']
+            if active_variants:
+                return sum(v.stock_quantity for v in active_variants)
+        else:
+            variant_stock = obj.variants.filter(status='active').aggregate(total=models.Sum('stock_quantity'))['total']
+            if variant_stock is not None:
+                return variant_stock
+        return obj.stock_quantity
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):

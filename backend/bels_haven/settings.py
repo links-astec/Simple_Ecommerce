@@ -109,7 +109,7 @@ MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT', str(BASE_DIR / 'media')))
 if os.getenv('CLOUDINARY_URL'):
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000').split(',')[0].strip()
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -164,7 +164,7 @@ ADMIN_API_KEY = os.getenv('ADMIN_API_KEY', '')
 # WhatsApp
 WHATSAPP_NUMBER = os.getenv('WHATSAPP_NUMBER', '')
 
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000').split(',')[0].strip()
 
 LOGGING = {
     'version': 1,

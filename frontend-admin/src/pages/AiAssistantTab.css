@@ -242,6 +242,12 @@
   font-weight: 400;
 }
 
+.ai-action-card__variants {
+  font-size: 0.7rem;
+  color: var(--gold);
+  font-style: italic;
+}
+
 .ai-action-card__error {
   font-size: 0.72rem;
   color: #c0392b;

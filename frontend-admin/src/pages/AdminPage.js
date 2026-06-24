@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Eye, EyeOff, LogOut, Menu,
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
-  Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send, Settings, Lock
+  Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send, Settings, Lock, Download, Database, FileText, FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import API, { adminLogin, getAdminToken } from '../api';
@@ -749,11 +749,13 @@ function ProductForm({ product, categories, onDone, onCancel }) {
                     {(v.existingImages || []).map(img => (
                       <div key={img.id} className="image-preview" style={{ width: 48, height: 60 }}>
                         <img src={img.url} alt="" />
+                        <button className="image-remove" onClick={() => setVariants(prev => prev.map((vv, vi) => vi === i ? { ...vv, existingImages: vv.existingImages.filter(ei => ei.id !== img.id) } : vv))}><X size={10} /></button>
                       </div>
                     ))}
                     {(v.images || []).map((file, fi) => (
                       <div key={fi} className="image-preview" style={{ width: 48, height: 60 }}>
                         <img src={URL.createObjectURL(file)} alt="" />
+                        <button className="image-remove" onClick={() => setVariants(prev => prev.map((vv, vi) => vi === i ? { ...vv, images: vv.images.filter((_, idx) => idx !== fi) } : vv))}><X size={10} /></button>
                       </div>
                     ))}
                     <label className="image-upload-btn" style={{ width: 48, height: 60, padding: 0, fontSize: '0.6rem' }}>
@@ -1167,6 +1169,7 @@ function SettingsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState('');
 
   useEffect(() => {
     API.get('/settings/')
@@ -1185,6 +1188,29 @@ function SettingsTab() {
       setError('Failed to save. Try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const downloadBackup = async (fmt) => {
+    setExporting(fmt);
+    try {
+      const res = await API.get(`/export/?format=${fmt}`, { responseType: 'blob' });
+      const ext = fmt === 'excel' ? 'xlsx' : 'json';
+      const date = new Date().toISOString().slice(0, 10);
+      const blob = new Blob([res.data]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bels-haven-backup-${date}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`${fmt === 'excel' ? 'Excel' : 'JSON'} backup downloaded`);
+    } catch {
+      toast.error('Failed to export. Try again.');
+    } finally {
+      setExporting('');
     }
   };
 
@@ -1228,6 +1254,60 @@ function SettingsTab() {
             {error && <p style={{ marginTop: 12, fontSize: '0.82rem', color: 'var(--error)' }}>{error}</p>}
           </>
         )}
+      </div>
+
+      {/* Data Backup */}
+      <div className="admin-form-card" style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <Database size={18} style={{ color: 'var(--gold)' }} />
+          <h3>Data Backup</h3>
+        </div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.7 }}>
+          Download a complete backup of your store data — products, orders, customers, and categories.
+          Do this regularly to protect against data loss, especially on the free database tier.
+        </p>
+
+        <div className="export-buttons">
+          <button
+            className="export-btn"
+            onClick={() => downloadBackup('json')}
+            disabled={!!exporting}
+          >
+            <FileText size={20} />
+            <div className="export-btn__text">
+              <strong>{exporting === 'json' ? 'Exporting...' : 'Download JSON'}</strong>
+              <span>Complete data backup, can be used to restore</span>
+            </div>
+            {exporting === 'json' ? <div className="spinner" /> : <Download size={16} />}
+          </button>
+
+          <button
+            className="export-btn"
+            onClick={() => downloadBackup('excel')}
+            disabled={!!exporting}
+          >
+            <FileSpreadsheet size={20} />
+            <div className="export-btn__text">
+              <strong>{exporting === 'excel' ? 'Exporting...' : 'Download Excel'}</strong>
+              <span>Spreadsheet with separate sheets per data type</span>
+            </div>
+            {exporting === 'excel' ? <div className="spinner" /> : <Download size={16} />}
+          </button>
+        </div>
+
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 14, letterSpacing: '0.05em' }}>
+          Includes: Categories, Products (with variants), Orders, Order Items, and Customers
+        </p>
+
+        <div style={{ marginTop: 20, padding: '14px 16px', background: 'rgba(45, 138, 94, 0.07)', border: '1px solid rgba(45, 138, 94, 0.2)', borderRadius: 2 }}>
+          <p style={{ fontSize: '0.82rem', color: 'var(--success)', fontWeight: 500, marginBottom: 4 }}>
+            Auto-backup enabled
+          </p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            A JSON backup is automatically uploaded to Cloudinary every time products, orders, or categories change.
+            The latest backup is always available at your Cloudinary dashboard under <code style={{ fontSize: '0.72rem', background: 'var(--black-soft)', padding: '2px 6px', borderRadius: 2 }}>backups/bels-haven-latest.json</code>
+          </p>
+        </div>
       </div>
     </div>
   );

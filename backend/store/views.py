@@ -58,8 +58,15 @@ class AdminLoginView(APIView):
 # ── Categories ──────────────────────────────────────────────────────────────
 
 class CategoryListView(generics.ListCreateAPIView):
-    queryset = Category.objects.all()
     serializer_class = CategorySerializer
+
+    def get_queryset(self):
+        return Category.objects.annotate(
+            _product_count=models.Count(
+                'products',
+                filter=models.Q(products__status='active', products__parent__isnull=True)
+            )
+        )
 
     def get_permissions(self):
         if self.request.method not in ('GET', 'HEAD', 'OPTIONS'):
@@ -84,7 +91,7 @@ class ProductListView(generics.ListCreateAPIView):
         return []
 
     def get_queryset(self):
-        qs = Product.objects.prefetch_related('images', 'variants')
+        qs = Product.objects.select_related('category', 'parent').prefetch_related('images', 'variants')
         is_admin = IsAdminKey().has_permission(self.request, self)
         if not is_admin:
             qs = qs.filter(status='active', parent__isnull=True)
@@ -176,8 +183,8 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         if self.request.method == 'GET':
-            return Product.objects.filter(status='active').prefetch_related('images', 'category', 'variants', 'variants__images')
-        return Product.objects.all().prefetch_related('images', 'category', 'variants', 'variants__images')
+            return Product.objects.filter(status='active').select_related('category', 'parent').prefetch_related('images', 'variants', 'variants__images')
+        return Product.objects.all().select_related('category', 'parent').prefetch_related('images', 'variants', 'variants__images')
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -517,7 +524,7 @@ def product_share(request, slug):
         if not image_url.startswith('http'):
             image_url = request.build_absolute_uri(image_url)
 
-    frontend_url = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
+    frontend_url = getattr(settings, 'FRONTEND_URL', '').split(',')[0].strip().rstrip('/')
     product_url = f"{frontend_url}/shop/{product.slug}" if frontend_url else request.build_absolute_uri(f'/shop/{product.slug}')
 
     if product.parent:
@@ -561,6 +568,146 @@ def product_share(request, slug):
 </html>"""
 
     return HttpResponse(page, content_type='text/html; charset=utf-8')
+
+
+class DataExportView(APIView):
+    def get(self, request):
+        key = request.headers.get('X-Admin-Key', '') or request.query_params.get('key', '')
+        expected = getattr(settings, 'ADMIN_API_KEY', '')
+        if not expected or not key or key != expected:
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        fmt = request.query_params.get('format', 'json')
+        now = timezone.now()
+        date_str = now.strftime('%Y-%m-%d')
+
+        categories = list(Category.objects.values('id', 'name', 'slug', 'description'))
+
+        products = []
+        for p in Product.objects.prefetch_related('images', 'category').all():
+            img_urls = [img.image.url for img in p.images.all()]
+            products.append({
+                'id': str(p.id), 'name': p.name, 'slug': p.slug,
+                'description': p.description, 'price': str(p.price),
+                'shipping_fee': str(p.shipping_fee), 'product_type': p.product_type,
+                'status': p.status, 'stock_quantity': p.stock_quantity,
+                'delivery_timeframe': p.delivery_timeframe,
+                'preorder_eta': p.preorder_eta,
+                'preorder_shipping_fee': str(p.preorder_shipping_fee),
+                'is_featured': p.is_featured,
+                'category': p.category.name if p.category else '',
+                'variant_label': p.variant_label,
+                'parent_slug': p.parent.slug if p.parent else '',
+                'images': img_urls,
+                'created_at': p.created_at.isoformat() if p.created_at else '',
+            })
+
+        orders = []
+        order_items_flat = []
+        customers_seen = set()
+        customers = []
+        for o in Order.objects.prefetch_related('items').all():
+            orders.append({
+                'id': str(o.id), 'reference': o.reference,
+                'customer_name': o.customer_name, 'customer_email': o.customer_email,
+                'customer_phone': o.customer_phone,
+                'delivery_address': o.delivery_address, 'city': o.city,
+                'state': o.state, 'country': o.country,
+                'status': o.status, 'total_amount': str(o.total_amount),
+                'shipping_fee': str(o.shipping_fee),
+                'payment_verified': o.payment_verified,
+                'payment_date': o.payment_date.isoformat() if o.payment_date else '',
+                'notes': o.notes,
+                'created_at': o.created_at.isoformat() if o.created_at else '',
+            })
+            for item in o.items.all():
+                order_items_flat.append({
+                    'order_reference': o.reference,
+                    'product_name': item.product_name,
+                    'product_type': item.product_type,
+                    'quantity': item.quantity,
+                    'unit_price': str(item.unit_price),
+                    'shipping_fee': str(item.shipping_fee),
+                })
+            email_key = o.customer_email.lower()
+            if email_key not in customers_seen:
+                customers_seen.add(email_key)
+                customers.append({
+                    'name': o.customer_name, 'email': o.customer_email,
+                    'phone': o.customer_phone,
+                    'address': o.delivery_address, 'city': o.city,
+                    'state': o.state, 'country': o.country,
+                })
+
+        if fmt == 'excel':
+            import openpyxl
+            from io import BytesIO
+            wb = openpyxl.Workbook()
+
+            def write_sheet(ws, headers, rows):
+                ws.append(headers)
+                for r in rows:
+                    ws.append([r.get(h, '') for h in headers])
+                for col in ws.columns:
+                    max_len = max((len(str(c.value or '')) for c in col), default=10)
+                    ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
+
+            ws_cat = wb.active
+            ws_cat.title = 'Categories'
+            write_sheet(ws_cat, ['id', 'name', 'slug', 'description'], categories)
+
+            ws_prod = wb.create_sheet('Products')
+            prod_headers = ['id', 'name', 'slug', 'category', 'price', 'shipping_fee',
+                           'product_type', 'status', 'stock_quantity', 'variant_label',
+                           'parent_slug', 'delivery_timeframe', 'preorder_eta',
+                           'is_featured', 'images', 'created_at']
+            ws_prod.append(prod_headers)
+            for p in products:
+                row = [p.get(h, '') for h in prod_headers]
+                img_idx = prod_headers.index('images')
+                row[img_idx] = ', '.join(p.get('images', []))
+                ws_prod.append(row)
+            for col in ws_prod.columns:
+                max_len = max((len(str(c.value or '')) for c in col), default=10)
+                ws_prod.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
+
+            ws_ord = wb.create_sheet('Orders')
+            ord_headers = ['reference', 'customer_name', 'customer_email', 'customer_phone',
+                          'delivery_address', 'city', 'state', 'country', 'status',
+                          'total_amount', 'shipping_fee', 'payment_verified',
+                          'payment_date', 'notes', 'created_at']
+            write_sheet(ws_ord, ord_headers, orders)
+
+            ws_items = wb.create_sheet('Order Items')
+            item_headers = ['order_reference', 'product_name', 'product_type',
+                           'quantity', 'unit_price', 'shipping_fee']
+            write_sheet(ws_items, item_headers, order_items_flat)
+
+            ws_cust = wb.create_sheet('Customers')
+            cust_headers = ['name', 'email', 'phone', 'address', 'city', 'state', 'country']
+            write_sheet(ws_cust, cust_headers, customers)
+
+            buf = BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            response = HttpResponse(buf.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.xlsx"'
+            return response
+
+        data = {
+            'exported_at': now.isoformat(),
+            'categories': categories,
+            'products': products,
+            'orders': orders,
+            'order_items': order_items_flat,
+            'customers': customers,
+        }
+        response = HttpResponse(
+            json.dumps(data, indent=2, default=str),
+            content_type='application/json'
+        )
+        response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.json"'
+        return response
 
 
 class SiteSettingsView(APIView):

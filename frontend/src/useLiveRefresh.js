@@ -1,22 +1,27 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
-export default function useLiveRefresh(refresh, delay = 30000) {
+export default function useLiveRefresh(refresh, delay = 300000) {
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+
   useEffect(() => {
-    const runRefresh = () => refresh();
-
-    const onFocus = () => runRefresh();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') runRefresh();
+    let lastRun = Date.now();
+    const run = () => {
+      if (Date.now() - lastRun < 10000) return;
+      lastRun = Date.now();
+      refreshRef.current();
     };
 
-    window.addEventListener('focus', onFocus);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+
     document.addEventListener('visibilitychange', onVisibilityChange);
-    const intervalId = window.setInterval(runRefresh, delay);
+    const intervalId = window.setInterval(run, delay);
 
     return () => {
-      window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.clearInterval(intervalId);
     };
-  }, [refresh, delay]);
+  }, [delay]);
 }
