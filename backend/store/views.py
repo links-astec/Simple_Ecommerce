@@ -695,88 +695,84 @@ class DataExportView(APIView):
             return response
 
         if fmt == 'pdf':
-            from io import BytesIO
-            from xml.sax.saxutils import escape as xml_escape
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            try:
+                from io import BytesIO
+                from reportlab.lib import colors
+                from reportlab.lib.pagesizes import A4, landscape
+                from reportlab.lib.units import mm
+                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
+                from reportlab.platypus import Paragraph as RLParagraph
+                from reportlab.lib.styles import getSampleStyleSheet
 
-            def safe(val):
-                s = str(val) if val is not None else ''
-                if len(s) > 120:
-                    s = s[:120] + '...'
-                return xml_escape(s)
+                def trunc(val, mx=80):
+                    s = str(val) if val is not None else ''
+                    return s[:mx] + '...' if len(s) > mx else s
 
-            buf = BytesIO()
-            doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm, topMargin=20*mm, bottomMargin=15*mm)
-            styles = getSampleStyleSheet()
-            title_style = ParagraphStyle('SectionTitle', parent=styles['Heading2'], textColor=colors.HexColor('#8a6520'), spaceAfter=8)
-            small = ParagraphStyle('Small', parent=styles['Normal'], fontSize=7, leading=9, wordWrap='CJK')
-            elements = []
+                buf = BytesIO()
+                doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=12*mm, rightMargin=12*mm, topMargin=15*mm, bottomMargin=12*mm)
+                styles = getSampleStyleSheet()
+                elements = []
 
-            elements.append(Paragraph("Bel&#8217;s Haven &#8212; Data Backup", styles['Title']))
-            elements.append(Paragraph(safe(f"Exported: {now.strftime('%B %d, %Y at %H:%M')}"), styles['Normal']))
-            elements.append(Spacer(1, 10*mm))
+                elements.append(RLParagraph("Bel's Haven - Data Backup".replace("'", "&#8217;"), styles['Title']))
+                elements.append(RLParagraph(f"Exported: {now.strftime('%B %d, %Y at %H:%M')}", styles['Normal']))
+                elements.append(Spacer(1, 8*mm))
 
-            def make_table(title, headers, rows, col_widths=None):
-                elements.append(Paragraph(safe(title), title_style))
-                if not rows:
-                    elements.append(Paragraph("No data", styles['Normal']))
-                    elements.append(Spacer(1, 6*mm))
-                    return
-                data_rows = [[Paragraph(safe(h), styles['Normal']) for h in headers]]
-                for r in rows:
-                    data_rows.append([Paragraph(safe(r.get(h, '')), small) for h in headers])
-                t = Table(data_rows, colWidths=col_widths, repeatRows=1)
-                t.setStyle(TableStyle([
+                header_style = TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f4f0e8')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#4a3f2f')),
                     ('FONTSIZE', (0, 0), (-1, 0), 8),
                     ('FONTSIZE', (0, 1), (-1, -1), 7),
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e8e0d0')),
+                    ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e8e0d0')),
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                     ('TOPPADDING', (0, 0), (-1, -1), 3),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
                     ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#faf8f4')]),
-                ]))
-                elements.append(t)
-                elements.append(Spacer(1, 8*mm))
+                ])
 
-            make_table(f"Categories ({len(categories)})",
-                       ['name', 'slug', 'description'],
-                       categories,
-                       [45*mm, 40*mm, 95*mm])
+                def add_section(title, headers, rows):
+                    elements.append(RLParagraph(title.replace("'", "&#8217;").replace("&", "&amp;").replace("<", "&lt;"), styles['Heading2']))
+                    if not rows:
+                        elements.append(RLParagraph("No data", styles['Normal']))
+                        elements.append(Spacer(1, 5*mm))
+                        return
+                    table_data = [headers]
+                    for r in rows:
+                        table_data.append([trunc(r.get(h, '')) for h in headers])
+                    t = Table(table_data, repeatRows=1)
+                    t.setStyle(header_style)
+                    elements.append(t)
+                    elements.append(Spacer(1, 6*mm))
 
-            parent_products = [p for p in products if not p['parent_slug']]
-            make_table(f"Products ({len(parent_products)})",
-                       ['name', 'category', 'price', 'stock_quantity', 'product_type', 'status'],
-                       parent_products,
-                       [50*mm, 30*mm, 25*mm, 20*mm, 25*mm, 20*mm])
+                add_section(f"Categories ({len(categories)})",
+                            ['name', 'slug', 'description'], categories)
 
-            variant_products = [p for p in products if p['parent_slug']]
-            if variant_products:
-                make_table(f"Product Variants ({len(variant_products)})",
-                           ['parent_slug', 'variant_label', 'price', 'stock_quantity', 'shipping_fee'],
-                           variant_products,
-                           [40*mm, 35*mm, 30*mm, 25*mm, 30*mm])
+                parent_products = [p for p in products if not p['parent_slug']]
+                add_section(f"Products ({len(parent_products)})",
+                            ['name', 'category', 'price', 'stock_quantity', 'product_type', 'status'],
+                            parent_products)
 
-            make_table(f"Orders ({len(orders)})",
-                       ['reference', 'customer_name', 'customer_email', 'status', 'total_amount', 'created_at'],
-                       orders,
-                       [25*mm, 35*mm, 45*mm, 20*mm, 25*mm, 30*mm])
+                variant_products = [p for p in products if p['parent_slug']]
+                if variant_products:
+                    add_section(f"Product Variants ({len(variant_products)})",
+                                ['parent_slug', 'variant_label', 'price', 'stock_quantity', 'shipping_fee'],
+                                variant_products)
 
-            make_table(f"Customers ({len(customers)})",
-                       ['name', 'email', 'phone', 'city', 'country'],
-                       customers,
-                       [35*mm, 50*mm, 35*mm, 30*mm, 30*mm])
+                add_section(f"Orders ({len(orders)})",
+                            ['reference', 'customer_name', 'customer_email', 'status', 'total_amount', 'created_at'],
+                            orders)
 
-            doc.build(elements)
-            buf.seek(0)
-            response = HttpResponse(buf.getvalue(), content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.pdf"'
-            return response
+                add_section(f"Customers ({len(customers)})",
+                            ['name', 'email', 'phone', 'city', 'country'],
+                            customers)
+
+                doc.build(elements)
+                buf.seek(0)
+                response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.pdf"'
+                return response
+            except Exception as e:
+                logger.exception('PDF export failed')
+                return Response({'error': f'PDF generation failed: {str(e)}'}, status=500)
 
         data = {
             'exported_at': now.isoformat(),
