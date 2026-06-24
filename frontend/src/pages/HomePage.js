@@ -1,10 +1,29 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Package, Clock, Shield, MessageCircle, Star } from 'lucide-react';
+import { ArrowRight, Sparkles, Package, Clock, Shield, MessageCircle, Star, ShoppingBag, Gem, Shirt, Lamp, Droplets, Watch, Scissors, Footprints } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { getProducts, getCategories } from '../api';
 import useLiveRefresh from '../useLiveRefresh';
 import './HomePage.css';
+
+const CATEGORY_STYLES = {
+  bags: { icon: ShoppingBag, gradient: 'linear-gradient(135deg, #8b6914, #c9a84c, #a67c2e)', emoji: '' },
+  'health-and-skincare': { icon: Droplets, gradient: 'linear-gradient(135deg, #2d6a4f, #52b788, #40916c)', emoji: '' },
+  clothes: { icon: Shirt, gradient: 'linear-gradient(135deg, #6d3a7d, #9b59b6, #8e44ad)', emoji: '' },
+  'household-kitchen--room-dcor': { icon: Lamp, gradient: 'linear-gradient(135deg, #b45309, #d97706, #ca8a04)', emoji: '' },
+  perfumes: { icon: Sparkles, gradient: 'linear-gradient(135deg, #be185d, #ec4899, #db2777)', emoji: '' },
+  jewelry: { icon: Gem, gradient: 'linear-gradient(135deg, #1e40af, #3b82f6, #2563eb)', emoji: '' },
+  'hair-products': { icon: Scissors, gradient: 'linear-gradient(135deg, #374151, #6b7280, #4b5563)', emoji: '' },
+  shoes: { icon: Footprints, gradient: 'linear-gradient(135deg, #92400e, #b45309, #a16207)', emoji: '' },
+};
+
+function getCategoryStyle(slug) {
+  if (CATEGORY_STYLES[slug]) return CATEGORY_STYLES[slug];
+  let hash = 0;
+  for (let i = 0; i < slug.length; i++) hash = slug.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return { icon: Package, gradient: `linear-gradient(135deg, hsl(${hue},45%,30%), hsl(${hue},50%,45%), hsl(${hue},40%,35%))`, emoji: '' };
+}
 
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
@@ -85,22 +104,28 @@ export default function HomePage() {
               <div className="gold-line" />
             </div>
             <div className="categories-scroll">
-              {categories.map(cat => (
-                <Link key={cat.id} to={`/shop?category=${cat.slug}`} className="cat-card">
-                  <div className="cat-card__image">
-                    {cat.image
-                      ? <img src={cat.image} alt={cat.name} loading="lazy" />
-                      : <div className="cat-card__placeholder" />
-                    }
-                    <div className="cat-card__overlay" />
-                  </div>
-                  <div className="cat-card__body">
-                    <h3 className="cat-card__name">{cat.name}</h3>
-                    <span className="cat-card__count">{cat.product_count} items</span>
-                    <span className="cat-card__link">Shop Now <ArrowRight size={12} /></span>
-                  </div>
-                </Link>
-              ))}
+              {categories.map(cat => {
+                const style = getCategoryStyle(cat.slug);
+                const Icon = style.icon;
+                return (
+                  <Link key={cat.id} to={`/shop?category=${cat.slug}`} className="cat-card">
+                    <div className="cat-card__image">
+                      {cat.image
+                        ? <img src={cat.image} alt={cat.name} loading="lazy" />
+                        : <div className="cat-card__generated" style={{ background: style.gradient }}>
+                            <Icon size={40} strokeWidth={1.2} />
+                          </div>
+                      }
+                      <div className="cat-card__overlay" />
+                    </div>
+                    <div className="cat-card__body">
+                      <h3 className="cat-card__name">{cat.name}</h3>
+                      <span className="cat-card__count">{cat.product_count} item{cat.product_count !== 1 ? 's' : ''}</span>
+                      <span className="cat-card__link">Shop Now <ArrowRight size={12} /></span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>

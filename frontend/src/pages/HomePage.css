@@ -209,6 +209,28 @@
   background: linear-gradient(135deg, var(--black-soft), #e8e0d0);
 }
 
+.cat-card__generated {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.35);
+  transition: color 0.3s;
+}
+
+.cat-card__generated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20.5z' fill='%23ffffff' fill-opacity='0.06' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+.cat-card:hover .cat-card__generated { color: rgba(255, 255, 255, 0.55); }
+
 .cat-card__overlay {
   position: absolute;
   inset: 0;
