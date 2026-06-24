@@ -21,7 +21,7 @@ export default function Footer() {
                   <MessageCircle size={18} />
                 </a>
               )}
-              <a href="mailto:hello@belshaven.com" aria-label="Email">
+              <a href="mailto:tengeychristabel@gmail.com" aria-label="Email">
                 <Mail size={18} />
               </a>
               <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram">
