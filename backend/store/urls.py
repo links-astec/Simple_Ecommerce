@@ -17,6 +17,7 @@ urlpatterns = [
     # Orders (GET public, PATCH admin-only)
     path('orders/', views.OrderCreateView.as_view(), name='order-create'),
     path('orders/all/', views.AdminOrderListView.as_view(), name='order-list-admin'),
+    path('orders/lookup/', views.OrdersByEmailView.as_view(), name='orders-by-email'),
     path('orders/<str:reference>/', views.OrderDetailView.as_view(), name='order-detail'),
 
     # Payment

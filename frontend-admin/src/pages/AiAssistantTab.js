@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Upload, X, Package, Check, AlertCircle, Loader } from 'lucide-react';
+import { Send, Sparkles, Upload, X, Package, Check, AlertCircle, Loader, Trash2 } from 'lucide-react';
 import API from '../api';
 import './AiAssistantTab.css';
 
@@ -117,18 +117,29 @@ RULES:
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function AiAssistantTab() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: null,
-      parsed: {
-        actions: [],
-        message: "Hi! 👋 I'm your store assistant. You can drop product images here, paste descriptions and prices, and I'll create everything for you automatically. You can also ask me to make changes like *\"update the price of the silk dress to GH₵200\"* or *\"mark the ankara bag as a preorder\"*. What would you like to do?",
-      },
-      status: null,
+const STORAGE_KEY = 'bh_admin_ai_messages';
+
+function loadSavedMessages() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-  ]);
+  } catch {}
+  return [{
+    role: 'assistant',
+    content: null,
+    parsed: {
+      actions: [],
+      message: "Hi! 👋 I'm your store assistant. You can drop product images here, paste descriptions and prices, and I'll create everything for you automatically. You can also ask me to make changes like *\"update the price of the silk dress to GH₵200\"* or *\"mark the ankara bag as a preorder\"*. What would you like to do?",
+    },
+    status: null,
+  }];
+}
+
+export default function AiAssistantTab() {
+  const [messages, setMessages] = useState(loadSavedMessages);
   const [input, setInput] = useState('');
   const [images, setImages] = useState([]); // { file, preview, name }
   const [loading, setLoading] = useState(false);
@@ -142,6 +153,16 @@ export default function AiAssistantTab() {
     fetchCategories().then(setCategories);
     fetchProducts().then(setProducts);
   }, []);
+
+  useEffect(() => {
+    try {
+      const serializable = messages.map(m => ({
+        ...m,
+        images: (m.images || []).map(img => ({ name: img.name })),
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+    } catch {}
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -313,6 +334,12 @@ export default function AiAssistantTab() {
     }
   };
 
+  const clearChat = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setMessages(loadSavedMessages());
+    setHistory([]);
+  };
+
   return (
     <div className="ai-tab">
       <div className="ai-tab__header">
@@ -323,9 +350,12 @@ export default function AiAssistantTab() {
             <p>Dump your product images and details — I'll handle the rest</p>
           </div>
         </div>
-        <div className="ai-tab__model">
-          <span>Powered by Groq</span>
-        </div>
+        {messages.length > 1 && (
+          <button className="ai-clear-btn" onClick={clearChat} title="Clear chat history">
+            <Trash2 size={14} />
+            <span>Clear</span>
+          </button>
+        )}
       </div>
 
       {/* Messages */}

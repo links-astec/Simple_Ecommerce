@@ -16,11 +16,90 @@
   margin-top: 8px;
 }
 
-.track-header__sub {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  margin-top: 12px;
+/* Mode toggle */
+.track-mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
 }
+
+.track-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--black-border);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.track-mode-btn:hover { color: var(--text-secondary); border-color: var(--text-muted); }
+.track-mode-btn.active { color: var(--gold); border-color: var(--gold-border); background: var(--gold-muted); }
+
+/* Email results list */
+.track-email-results {
+  max-width: 540px;
+  margin: 24px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.track-email-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.track-order-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--black-card);
+  border: 1px solid var(--black-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  text-align: left;
+  width: 100%;
+  font-family: var(--font-body);
+}
+
+.track-order-card:hover { border-color: var(--gold-border); box-shadow: var(--shadow-gold); }
+
+.track-order-card__left { display: flex; flex-direction: column; gap: 3px; }
+.track-order-card__ref { font-family: var(--font-display); font-size: 1.1rem; font-weight: 400; letter-spacing: 0.04em; color: var(--text-primary); }
+.track-order-card__date { font-size: 0.72rem; color: var(--text-muted); }
+
+.track-order-card__right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+.track-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--gold);
+  cursor: pointer;
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+  padding: 0;
+}
+
+.track-back-btn:hover { text-decoration: underline; }
 
 /* Search */
 .track-search {
@@ -34,6 +113,10 @@
   flex: 1;
   font-size: 0.95rem;
   letter-spacing: 0.08em;
+}
+
+.track-search__input[type="text"],
+.track-search__input:not([type]) {
   text-transform: uppercase;
 }
 

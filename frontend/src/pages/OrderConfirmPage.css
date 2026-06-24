@@ -35,6 +35,41 @@
   letter-spacing: 0.06em;
 }
 
+.order-ref-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.order-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  background: var(--gold-muted);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius);
+  color: var(--gold-dark);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.order-copy-btn:hover { background: var(--gold); color: #fff; border-color: var(--gold); }
+
+.order-save-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.order-save-hint a { color: var(--gold); text-decoration: underline; }
+
 .order-status-badge { align-self: flex-start; }
 .order-status--paid { background: rgba(76,175,125,0.12); color: #4caf7d; border: 1px solid rgba(76,175,125,0.3); }
 .order-status--pending { background: rgba(201,168,76,0.1); color: var(--gold); border: 1px solid var(--gold-border); }

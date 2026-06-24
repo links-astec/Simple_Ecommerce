@@ -3,6 +3,7 @@
   flex-direction: column;
   height: calc(100vh - 80px);
   max-width: 900px;
+  margin: 0 auto;
 }
 
 /* Header */
@@ -52,6 +53,25 @@
   color: var(--gold-dark);
   font-weight: 500;
 }
+
+.ai-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--black-border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-clear-btn:hover { color: var(--error); border-color: var(--error); }
 
 /* Messages area */
 .ai-messages {

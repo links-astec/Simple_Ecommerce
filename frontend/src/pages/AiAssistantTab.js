@@ -297,9 +297,6 @@ export default function AiAssistantTab() {
             <p>Dump your product images and details - I&apos;ll handle the rest</p>
           </div>
         </div>
-        <div className="ai-tab__model">
-          <span>Powered by Groq</span>
-        </div>
       </div>
 
       <div className="ai-messages">

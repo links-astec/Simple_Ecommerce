@@ -241,6 +241,21 @@ class OrderDetailView(APIView):
             return Response({'error': 'Order not found'}, status=404)
 
 
+class OrdersByEmailView(APIView):
+    def get(self, request):
+        email = request.query_params.get('email', '').strip().lower()
+        if not email:
+            return Response({'error': 'Email is required'}, status=400)
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            return Response({'error': 'Invalid email address'}, status=400)
+        orders = Order.objects.filter(
+            customer_email__iexact=email
+        ).prefetch_related('items').order_by('-created_at')
+        return Response(OrderSerializer(orders, many=True).data)
+
+
 # ── Payment ───────────────────────────────────────────────────────────────────
 
 class PaystackInitializeView(APIView):

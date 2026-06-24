@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Package, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { Package, MapPin, Clock, MessageCircle, Copy, Check } from 'lucide-react';
 import { getOrder } from '../api';
+import toast from 'react-hot-toast';
 import './OrderConfirmPage.css';
 
 export default function OrderConfirmPage() {
   const { reference } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     getOrder(reference)
@@ -46,10 +48,24 @@ export default function OrderConfirmPage() {
           <div className="order-card__glow" />
           <div className="order-card__header">
             <p className="section-eyebrow">Order Details</p>
-            <h1>{order.reference}</h1>
+            <div className="order-ref-row">
+              <h1>{order.reference}</h1>
+              <button
+                className="order-copy-btn"
+                onClick={() => {
+                  navigator.clipboard.writeText(order.reference)
+                    .then(() => { setCopied(true); toast.success('Reference copied!'); setTimeout(() => setCopied(false), 2000); })
+                    .catch(() => toast.error('Could not copy'));
+                }}
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
             <span className={`badge order-status-badge order-status--${order.status}`}>
               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
             </span>
+            <p className="order-save-hint">Save this reference to track your order anytime, or use your email on the <Link to="/track">Track Order</Link> page.</p>
           </div>
 
           <div className="order-grid">

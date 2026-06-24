@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Package, MapPin, Clock, CheckCircle, Truck, Box, XCircle, MessageCircle } from 'lucide-react';
-import { getOrder } from '../api';
+import { Search, Package, MapPin, Clock, CheckCircle, Truck, Box, XCircle, MessageCircle, Mail } from 'lucide-react';
+import { getOrder, getOrdersByEmail } from '../api';
 import './TrackOrderPage.css';
 
 const STATUS_STEPS = ['pending', 'paid', 'processing', 'shipped', 'delivered'];
@@ -16,17 +16,21 @@ const STATUS_META = {
 };
 
 export default function TrackOrderPage() {
+  const [mode, setMode] = useState('reference');
   const [reference, setReference] = useState('');
+  const [email, setEmail] = useState('');
   const [order, setOrder] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const track = async () => {
+  const trackByRef = async () => {
     const ref = reference.trim().toUpperCase();
     if (!ref) { setError('Please enter your order reference.'); return; }
     setLoading(true);
     setError('');
     setOrder(null);
+    setOrders([]);
     try {
       const res = await getOrder(ref);
       setOrder(res.data);
@@ -37,15 +41,38 @@ export default function TrackOrderPage() {
     }
   };
 
+  const trackByEmail = async () => {
+    const e = email.trim().toLowerCase();
+    if (!e) { setError('Please enter your email address.'); return; }
+    setLoading(true);
+    setError('');
+    setOrder(null);
+    setOrders([]);
+    try {
+      const res = await getOrdersByEmail(e);
+      const data = res.data.results || res.data || [];
+      if (data.length === 0) {
+        setError('No orders found for this email address.');
+      } else {
+        setOrders(data);
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const whatsappNumber = process.env.REACT_APP_WHATSAPP_NUMBER || '';
-  const waUrl = order
+  const activeOrder = order || null;
+  const waUrl = activeOrder
     ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-        `Hello! I'd like to check the status of my order.\nReference: *${order.reference}*\nName: ${order.customer_name}`
+        `Hello! I'd like to check the status of my order.\nReference: *${activeOrder.reference}*\nName: ${activeOrder.customer_name}`
       )}`
     : '#';
 
-  const currentStep = STATUS_STEPS.indexOf(order?.status);
-  const isCancelled = order?.status === 'cancelled';
+  const currentStep = STATUS_STEPS.indexOf(activeOrder?.status);
+  const isCancelled = activeOrder?.status === 'cancelled';
 
   return (
     <div className="track-page">
@@ -54,41 +81,111 @@ export default function TrackOrderPage() {
           <p className="section-eyebrow">Order Tracking</p>
           <h1>Track Your Order</h1>
           <div className="gold-line" style={{ margin: '12px auto 0' }} />
-          <p className="track-header__sub">Enter the reference number from your confirmation email.</p>
         </div>
 
-        <div className="track-search">
-          <input
-            className="input-field track-search__input"
-            placeholder="e.g. BHXXXXXXXX"
-            value={reference}
-            onChange={e => { setReference(e.target.value); setError(''); }}
-            onKeyDown={e => e.key === 'Enter' && track()}
-          />
-          <button className="btn-primary track-search__btn" onClick={track} disabled={loading}>
-            {loading ? <div className="spinner" /> : <Search size={16} />}
-            <span>{loading ? 'Searching...' : 'Track Order'}</span>
+        <div className="track-mode-toggle">
+          <button
+            className={`track-mode-btn ${mode === 'reference' ? 'active' : ''}`}
+            onClick={() => { setMode('reference'); setError(''); setOrders([]); setOrder(null); }}
+          >
+            <Search size={14} />
+            <span>By Reference</span>
+          </button>
+          <button
+            className={`track-mode-btn ${mode === 'email' ? 'active' : ''}`}
+            onClick={() => { setMode('email'); setError(''); setOrders([]); setOrder(null); }}
+          >
+            <Mail size={14} />
+            <span>By Email</span>
           </button>
         </div>
 
+        {mode === 'reference' && (
+          <div className="track-search">
+            <input
+              className="input-field track-search__input"
+              placeholder="e.g. BHXXXXXXXX"
+              value={reference}
+              onChange={e => { setReference(e.target.value); setError(''); }}
+              onKeyDown={e => e.key === 'Enter' && trackByRef()}
+            />
+            <button className="btn-primary track-search__btn" onClick={trackByRef} disabled={loading}>
+              {loading ? <div className="spinner" /> : <Search size={16} />}
+              <span>{loading ? 'Searching...' : 'Track Order'}</span>
+            </button>
+          </div>
+        )}
+
+        {mode === 'email' && (
+          <div className="track-search">
+            <input
+              className="input-field track-search__input"
+              type="email"
+              placeholder="Enter your email address"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setError(''); }}
+              onKeyDown={e => e.key === 'Enter' && trackByEmail()}
+            />
+            <button className="btn-primary track-search__btn" onClick={trackByEmail} disabled={loading}>
+              {loading ? <div className="spinner" /> : <Search size={16} />}
+              <span>{loading ? 'Searching...' : 'Find Orders'}</span>
+            </button>
+          </div>
+        )}
+
         {error && <p className="track-error">{error}</p>}
 
-        {order && (
+        {/* Email results - order list */}
+        {orders.length > 0 && !order && (
+          <div className="track-email-results">
+            <p className="track-email-count">{orders.length} order{orders.length !== 1 ? 's' : ''} found</p>
+            {orders.map(o => (
+              <button
+                key={o.reference}
+                className="track-order-card"
+                onClick={() => setOrder(o)}
+              >
+                <div className="track-order-card__left">
+                  <span className="track-order-card__ref">{o.reference}</span>
+                  <span className="track-order-card__date">
+                    {new Date(o.created_at).toLocaleDateString('en-GH', { dateStyle: 'medium' })}
+                  </span>
+                </div>
+                <div className="track-order-card__right">
+                  <span className="price">GH₵{parseFloat(o.total_amount).toLocaleString('en-GH', { minimumFractionDigits: 2 })}</span>
+                  <span
+                    className="badge"
+                    style={{ color: STATUS_META[o.status]?.color, fontSize: '0.55rem' }}
+                  >
+                    {STATUS_META[o.status]?.label || o.status}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Single order detail */}
+        {activeOrder && (
           <div className="track-result">
+            {orders.length > 0 && (
+              <button className="track-back-btn" onClick={() => setOrder(null)}>
+                ← Back to all orders
+              </button>
+            )}
             <div className="track-result__top">
               <div>
                 <p className="section-eyebrow">Order Reference</p>
-                <h2 className="track-ref">{order.reference}</h2>
+                <h2 className="track-ref">{activeOrder.reference}</h2>
               </div>
               <span
                 className="badge track-status-badge"
-                style={{ color: STATUS_META[order.status]?.color }}
+                style={{ color: STATUS_META[activeOrder.status]?.color }}
               >
-                {STATUS_META[order.status]?.label || order.status}
+                {STATUS_META[activeOrder.status]?.label || activeOrder.status}
               </span>
             </div>
 
-            {/* Progress timeline */}
             {!isCancelled && (
               <div className="track-timeline">
                 {STATUS_STEPS.map((step, i) => {
@@ -121,11 +218,10 @@ export default function TrackOrderPage() {
             )}
 
             <div className="track-grid">
-              {/* Items */}
               <div className="track-card">
                 <h4><Package size={15} /> Items Ordered</h4>
                 <div className="track-items">
-                  {order.items.map(item => (
+                  {activeOrder.items.map(item => (
                     <div key={item.id} className="track-item">
                       <div className="track-item__info">
                         <span className="track-item__name">{item.product_name}</span>
@@ -143,25 +239,24 @@ export default function TrackOrderPage() {
                 <div className="track-totals">
                   <div className="track-total-row">
                     <span>Shipping</span>
-                    <span>GH₵{parseFloat(order.shipping_fee).toLocaleString('en-GH', { minimumFractionDigits: 2 })}</span>
+                    <span>GH₵{parseFloat(activeOrder.shipping_fee).toLocaleString('en-GH', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="track-total-row track-total-row--grand">
-                    <span>Total {order.payment_verified ? 'Paid' : 'Due'}</span>
-                    <span className="price">GH₵{parseFloat(order.total_amount).toLocaleString('en-GH', { minimumFractionDigits: 2 })}</span>
+                    <span>Total {activeOrder.payment_verified ? 'Paid' : 'Due'}</span>
+                    <span className="price">GH₵{parseFloat(activeOrder.total_amount).toLocaleString('en-GH', { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Delivery + contact */}
               <div className="track-card">
                 <h4><MapPin size={15} /> Delivery Address</h4>
-                <p>{order.customer_name}</p>
-                <p>{order.delivery_address}</p>
-                <p>{order.city}, {order.state}</p>
-                <p>{order.country}</p>
+                <p>{activeOrder.customer_name}</p>
+                <p>{activeOrder.delivery_address}</p>
+                <p>{activeOrder.city}, {activeOrder.state}</p>
+                <p>{activeOrder.country}</p>
 
                 <h4 style={{ marginTop: 20 }}><Clock size={15} /> Order Placed</h4>
-                <p>{new Date(order.created_at).toLocaleDateString('en-GH', { dateStyle: 'long' })}</p>
+                <p>{new Date(activeOrder.created_at).toLocaleDateString('en-GH', { dateStyle: 'long' })}</p>
 
                 <div className="track-wa">
                   <p>Questions about your order?</p>
