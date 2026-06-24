@@ -20,10 +20,11 @@ export default function ProductPage() {
     getProduct(slug)
       .then(res => {
         setProduct(res.data);
-        const variants = res.data.variants || [];
-        if (variants.length > 0 && !selectedVariant) {
-          setSelectedVariant(variants[0]);
-        }
+        setSelectedVariant(prev => {
+          const variants = res.data.variants || [];
+          if (variants.length > 0 && !prev) return variants[0];
+          return prev;
+        });
       })
       .catch(console.error)
       .finally(() => setLoading(false));

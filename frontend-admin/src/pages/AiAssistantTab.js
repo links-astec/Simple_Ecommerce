@@ -222,7 +222,7 @@ export default function AiAssistantTab() {
   const send = async () => {
     if (!input.trim() && images.length === 0) return;
     if (!GROQ_API_KEY) {
-      addMessage('assistant', null, { actions: [], message: '⚠️ No Groq API key found. Please add REACT_APP_GROQ_API_KEY to your .env file and restart.' }, null);
+      setMessages(prev => [...prev, { role: 'assistant', content: null, parsed: { actions: [], message: 'No Groq API key found. Please add REACT_APP_GROQ_API_KEY to your .env file and restart.' }, status: null, images: [], id: Date.now() }]);
       return;
     }
 
@@ -232,8 +232,7 @@ export default function AiAssistantTab() {
     setImages([]);
     setLoading(true);
 
-    // Add user message to UI
-    addMessage('user', userText, null, null, userImages);
+    setMessages(prev => [...prev, { role: 'user', content: userText, parsed: null, status: null, images: userImages, id: Date.now() }]);
 
     try {
       // Build Groq message content
