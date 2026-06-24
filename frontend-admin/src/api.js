@@ -11,14 +11,6 @@ API.interceptors.request.use((config) => {
   if (token) {
     config.headers = { ...(config.headers || {}), 'X-Admin-Key': token };
   }
-  if ((config.method || 'get').toLowerCase() === 'get') {
-    config.params = { ...(config.params || {}), _ts: Date.now() };
-    config.headers = {
-      ...(config.headers || {}),
-      'Cache-Control': 'no-cache, no-store, max-age=0',
-      Pragma: 'no-cache',
-    };
-  }
   return config;
 });
 
