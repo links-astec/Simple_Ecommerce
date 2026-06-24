@@ -1203,8 +1203,10 @@ function SettingsTab() {
   };
 
   const generatePdf = async (data) => {
-    const { default: jsPDF } = await import('jspdf');
-    await import('jspdf-autotable');
+    const jspdfModule = await import('jspdf');
+    const jsPDF = jspdfModule.default || jspdfModule.jsPDF;
+    const autoTable = await import('jspdf-autotable');
+    if (autoTable.default) autoTable.default(jsPDF);
     const doc = new jsPDF({ orientation: 'landscape' });
     const date = new Date().toISOString().slice(0, 10);
     const gold = [138, 101, 32];
