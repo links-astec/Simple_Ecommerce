@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Package, Clock, Shield, MessageCircle, Star, ShoppingBag, Gem, Shirt, Lamp, Droplets, Watch, Scissors, Footprints } from 'lucide-react';
+import { ArrowRight, Sparkles, Package, Clock, Shield, MessageCircle, Star, ShoppingBag, Gem, Shirt, Lamp, Droplets, Scissors, Footprints } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { getProducts, getCategories } from '../api';
 import useLiveRefresh from '../useLiveRefresh';

@@ -336,19 +336,57 @@ class OrderDetailView(APIView):
             return Response({'error': 'Order not found'}, status=404)
 
 
+_email_codes = {}
+
 class OrdersByEmailView(APIView):
-    def get(self, request):
-        email = request.query_params.get('email', '').strip().lower()
+    def post(self, request):
+        action = request.data.get('action', 'send_code')
+        email = request.data.get('email', '').strip().lower()
         if not email:
             return Response({'error': 'Email is required'}, status=400)
         try:
             validate_email(email)
         except DjangoValidationError:
             return Response({'error': 'Invalid email address'}, status=400)
-        orders = Order.objects.filter(
-            customer_email__iexact=email
-        ).prefetch_related('items').order_by('-created_at')
-        return Response(OrderSerializer(orders, many=True).data)
+
+        if action == 'send_code':
+            if not Order.objects.filter(customer_email__iexact=email).exists():
+                return Response({'error': 'No orders found for this email.'}, status=404)
+            import secrets
+            code = secrets.token_hex(3).upper()
+            _email_codes[email] = {'code': code, 'ts': timezone.now()}
+            for old_email in list(_email_codes):
+                if (timezone.now() - _email_codes[old_email]['ts']).total_seconds() > 600:
+                    del _email_codes[old_email]
+            try:
+                send_mail(
+                    subject="Your verification code — Bel's Haven",
+                    message=f"Your order lookup code is: {code}\n\nThis code expires in 10 minutes.\n\n— Bel's Haven",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+            except Exception:
+                return Response({'error': 'Failed to send code. Try again.'}, status=500)
+            return Response({'status': 'code_sent'})
+
+        if action == 'verify':
+            code = request.data.get('code', '').strip().upper()
+            if not code:
+                return Response({'error': 'Code is required'}, status=400)
+            entry = _email_codes.get(email)
+            if not entry or entry['code'] != code:
+                return Response({'error': 'Invalid code. Please try again.'}, status=403)
+            if (timezone.now() - entry['ts']).total_seconds() > 600:
+                del _email_codes[email]
+                return Response({'error': 'Code expired. Request a new one.'}, status=403)
+            del _email_codes[email]
+            orders = Order.objects.filter(
+                customer_email__iexact=email
+            ).prefetch_related('items').order_by('-created_at')
+            return Response(OrderSerializer(orders, many=True).data)
+
+        return Response({'error': 'Invalid action'}, status=400)
 
 
 # ── Payment ───────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Package, MapPin, Clock, CheckCircle, Truck, Box, XCircle, MessageCircle, Mail } from 'lucide-react';
-import { getOrder, getOrdersByEmail } from '../api';
+import { getOrder, sendOrderLookupCode, verifyOrderLookupCode } from '../api';
 import './TrackOrderPage.css';
 
 const STATUS_STEPS = ['pending', 'paid', 'processing', 'shipped', 'delivered'];
@@ -30,6 +30,8 @@ export default function TrackOrderPage() {
   const [mode, setMode] = useState('reference');
   const [reference, setReference] = useState('');
   const [email, setEmail] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
   const [order, setOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -59,23 +61,40 @@ export default function TrackOrderPage() {
     }
   };
 
-  const trackByEmail = async () => {
+  const sendCode = async () => {
     const e = email.trim().toLowerCase();
     if (!e) { setError('Please enter your email address.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      await sendOrderLookupCode(e);
+      setCodeSent(true);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const trackByEmail = async () => {
+    const e = email.trim().toLowerCase();
+    const c = verifyCode.trim();
+    if (!c) { setError('Please enter the verification code.'); return; }
     setLoading(true);
     setError('');
     setOrder(null);
     setOrders([]);
     try {
-      const res = await getOrdersByEmail(e);
+      const res = await verifyOrderLookupCode(e, c);
       const data = res.data.results || res.data || [];
       if (data.length === 0) {
-        setError('No orders found for this email address.');
+        setError('No orders found.');
       } else {
         setOrders(data);
+        setCodeSent(false);
       }
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -104,14 +123,14 @@ export default function TrackOrderPage() {
         <div className="track-mode-toggle">
           <button
             className={`track-mode-btn ${mode === 'reference' ? 'active' : ''}`}
-            onClick={() => { setMode('reference'); setError(''); setOrders([]); setOrder(null); }}
+            onClick={() => { setMode('reference'); setError(''); setOrders([]); setOrder(null); setCodeSent(false); setVerifyCode(''); }}
           >
             <Search size={14} />
             <span>By Reference</span>
           </button>
           <button
             className={`track-mode-btn ${mode === 'email' ? 'active' : ''}`}
-            onClick={() => { setMode('email'); setError(''); setOrders([]); setOrder(null); }}
+            onClick={() => { setMode('email'); setError(''); setOrders([]); setOrder(null); setCodeSent(false); setVerifyCode(''); }}
           >
             <Mail size={14} />
             <span>By Email</span>
@@ -134,7 +153,7 @@ export default function TrackOrderPage() {
           </div>
         )}
 
-        {mode === 'email' && (
+        {mode === 'email' && !codeSent && (
           <div className="track-search">
             <input
               className="input-field track-search__input"
@@ -142,11 +161,36 @@ export default function TrackOrderPage() {
               placeholder="Enter your email address"
               value={email}
               onChange={e => { setEmail(e.target.value); setError(''); }}
-              onKeyDown={e => e.key === 'Enter' && trackByEmail()}
+              onKeyDown={e => e.key === 'Enter' && sendCode()}
             />
-            <button className="btn-primary track-search__btn" onClick={trackByEmail} disabled={loading}>
-              {loading ? <div className="spinner" /> : <Search size={16} />}
-              <span>{loading ? 'Searching...' : 'Find Orders'}</span>
+            <button className="btn-primary track-search__btn" onClick={sendCode} disabled={loading}>
+              {loading ? <div className="spinner" /> : <Mail size={16} />}
+              <span>{loading ? 'Sending...' : 'Send Code'}</span>
+            </button>
+          </div>
+        )}
+
+        {mode === 'email' && codeSent && orders.length === 0 && (
+          <div className="track-verify">
+            <p className="track-verify__msg">We sent a verification code to <strong>{email}</strong>. Enter it below.</p>
+            <div className="track-search">
+              <input
+                className="input-field track-search__input"
+                type="text"
+                placeholder="Enter 6-digit code"
+                value={verifyCode}
+                onChange={e => { setVerifyCode(e.target.value.toUpperCase()); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && trackByEmail()}
+                autoFocus
+                style={{ letterSpacing: '0.2em', textTransform: 'uppercase' }}
+              />
+              <button className="btn-primary track-search__btn" onClick={trackByEmail} disabled={loading}>
+                {loading ? <div className="spinner" /> : <Search size={16} />}
+                <span>{loading ? 'Verifying...' : 'Verify'}</span>
+              </button>
+            </div>
+            <button className="track-resend" onClick={() => { setCodeSent(false); setVerifyCode(''); setError(''); }}>
+              Use a different email
             </button>
           </div>
         )}

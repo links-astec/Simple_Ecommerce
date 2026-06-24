@@ -131,6 +131,37 @@
   max-width: 260px;
 }
 
+/* Verification step */
+.track-verify {
+  max-width: 540px;
+  margin: 0 auto 16px;
+  text-align: center;
+}
+
+.track-verify__msg {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.track-verify__msg strong { color: var(--gold); }
+
+.track-resend {
+  display: inline-block;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--gold);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  padding: 0;
+}
+
+.track-resend:hover { text-decoration: underline; }
+
 /* Search */
 .track-search {
   display: flex;

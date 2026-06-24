@@ -16,7 +16,8 @@ export const createOrder = (data) => API.post('/orders/', data);
 export const initializePayment = (orderId, callbackUrl) => API.post('/payment/initialize/', { order_id: orderId, callback_url: callbackUrl });
 export const verifyPayment = (reference) => API.get('/payment/verify/', { params: { reference } });
 export const getOrder = (reference) => API.get(`/orders/${reference}/`);
-export const getOrdersByEmail = (email) => API.get('/orders/lookup/', { params: { email } });
+export const sendOrderLookupCode = (email) => API.post('/orders/lookup/', { action: 'send_code', email });
+export const verifyOrderLookupCode = (email, code) => API.post('/orders/lookup/', { action: 'verify', email, code });
 export const getSiteSettings = () => API.get('/settings/');
 
 export default API;
