@@ -1270,18 +1270,56 @@ function SettingsTab() {
     doc.save('bels-haven-backup-' + date + '.pdf');
   };
 
+  const generateExcel = async (data) => {
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+
+    const addSheet = (name, headers, rows) => {
+      const sheetData = [headers, ...rows.map(r => headers.map(h => {
+        const v = r[h];
+        if (Array.isArray(v)) return v.join(', ');
+        return v != null ? String(v) : '';
+      }))];
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      ws['!cols'] = headers.map(() => ({ wch: 20 }));
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    };
+
+    addSheet('Categories', ['name', 'slug', 'description'], data.categories);
+
+    addSheet('Products',
+      ['name', 'slug', 'category', 'price', 'shipping_fee', 'product_type', 'status',
+       'stock_quantity', 'variant_label', 'parent_slug', 'delivery_timeframe', 'preorder_eta',
+       'is_featured', 'images', 'created_at'],
+      data.products);
+
+    addSheet('Orders',
+      ['reference', 'customer_name', 'customer_email', 'customer_phone',
+       'delivery_address', 'city', 'state', 'country', 'status',
+       'total_amount', 'shipping_fee', 'payment_verified', 'payment_date', 'notes', 'created_at'],
+      data.orders);
+
+    addSheet('Order Items',
+      ['order_reference', 'product_name', 'product_type', 'quantity', 'unit_price', 'shipping_fee'],
+      data.order_items || []);
+
+    addSheet('Customers', ['name', 'email', 'phone', 'address', 'city', 'state', 'country'], data.customers);
+
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `bels-haven-backup-${date}.xlsx`);
+  };
+
   const downloadBackup = async (fmt) => {
     setExporting(fmt);
     try {
-      if (fmt === 'pdf') {
+      if (fmt === 'pdf' || fmt === 'excel') {
         const res = await API.get('/export/?format=json');
-        const data = res.data;
-        await generatePdf(data);
+        if (fmt === 'pdf') await generatePdf(res.data);
+        else await generateExcel(res.data);
       } else {
-        const res = await API.get(`/export/?format=${fmt}`, { responseType: 'blob' });
-        const ext = fmt === 'excel' ? 'xlsx' : 'json';
+        const res = await API.get('/export/?format=json', { responseType: 'blob' });
         const date = new Date().toISOString().slice(0, 10);
-        downloadFile(new Blob([res.data]), `bels-haven-backup-${date}.${ext}`);
+        downloadFile(new Blob([res.data]), `bels-haven-backup-${date}.json`);
       }
       toast.success(`${fmt === 'excel' ? 'Excel' : fmt === 'pdf' ? 'PDF' : 'JSON'} backup downloaded`);
     } catch (e) {

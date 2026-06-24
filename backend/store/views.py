@@ -640,59 +640,57 @@ class DataExportView(APIView):
                 })
 
         if fmt == 'excel':
-            import openpyxl
-            from io import BytesIO
-            wb = openpyxl.Workbook()
+            try:
+                import openpyxl
+                from io import BytesIO
+                wb = openpyxl.Workbook()
 
-            def write_sheet(ws, headers, rows):
-                ws.append(headers)
-                for r in rows:
-                    ws.append([r.get(h, '') for h in headers])
-                for col in ws.columns:
-                    max_len = max((len(str(c.value or '')) for c in col), default=10)
-                    ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
+                def write_sheet(ws, headers, rows):
+                    ws.append(headers)
+                    for r in rows:
+                        ws.append([str(r.get(h, '') or '') for h in headers])
 
-            ws_cat = wb.active
-            ws_cat.title = 'Categories'
-            write_sheet(ws_cat, ['id', 'name', 'slug', 'description'], categories)
+                ws_cat = wb.active
+                ws_cat.title = 'Categories'
+                write_sheet(ws_cat, ['id', 'name', 'slug', 'description'], categories)
 
-            ws_prod = wb.create_sheet('Products')
-            prod_headers = ['id', 'name', 'slug', 'category', 'price', 'shipping_fee',
-                           'product_type', 'status', 'stock_quantity', 'variant_label',
-                           'parent_slug', 'delivery_timeframe', 'preorder_eta',
-                           'is_featured', 'images', 'created_at']
-            ws_prod.append(prod_headers)
-            for p in products:
-                row = [p.get(h, '') for h in prod_headers]
-                img_idx = prod_headers.index('images')
-                row[img_idx] = ', '.join(p.get('images', []))
-                ws_prod.append(row)
-            for col in ws_prod.columns:
-                max_len = max((len(str(c.value or '')) for c in col), default=10)
-                ws_prod.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
+                ws_prod = wb.create_sheet('Products')
+                prod_headers = ['id', 'name', 'slug', 'category', 'price', 'shipping_fee',
+                               'product_type', 'status', 'stock_quantity', 'variant_label',
+                               'parent_slug', 'delivery_timeframe', 'preorder_eta',
+                               'is_featured', 'images', 'created_at']
+                ws_prod.append(prod_headers)
+                for p in products:
+                    row = [str(p.get(h, '') or '') for h in prod_headers]
+                    img_idx = prod_headers.index('images')
+                    row[img_idx] = ', '.join(p.get('images', []))
+                    ws_prod.append(row)
 
-            ws_ord = wb.create_sheet('Orders')
-            ord_headers = ['reference', 'customer_name', 'customer_email', 'customer_phone',
-                          'delivery_address', 'city', 'state', 'country', 'status',
-                          'total_amount', 'shipping_fee', 'payment_verified',
-                          'payment_date', 'notes', 'created_at']
-            write_sheet(ws_ord, ord_headers, orders)
+                ws_ord = wb.create_sheet('Orders')
+                ord_headers = ['reference', 'customer_name', 'customer_email', 'customer_phone',
+                              'delivery_address', 'city', 'state', 'country', 'status',
+                              'total_amount', 'shipping_fee', 'payment_verified',
+                              'payment_date', 'notes', 'created_at']
+                write_sheet(ws_ord, ord_headers, orders)
 
-            ws_items = wb.create_sheet('Order Items')
-            item_headers = ['order_reference', 'product_name', 'product_type',
-                           'quantity', 'unit_price', 'shipping_fee']
-            write_sheet(ws_items, item_headers, order_items_flat)
+                ws_items = wb.create_sheet('Order Items')
+                item_headers = ['order_reference', 'product_name', 'product_type',
+                               'quantity', 'unit_price', 'shipping_fee']
+                write_sheet(ws_items, item_headers, order_items_flat)
 
-            ws_cust = wb.create_sheet('Customers')
-            cust_headers = ['name', 'email', 'phone', 'address', 'city', 'state', 'country']
-            write_sheet(ws_cust, cust_headers, customers)
+                ws_cust = wb.create_sheet('Customers')
+                cust_headers = ['name', 'email', 'phone', 'address', 'city', 'state', 'country']
+                write_sheet(ws_cust, cust_headers, customers)
 
-            buf = BytesIO()
-            wb.save(buf)
-            buf.seek(0)
-            response = HttpResponse(buf.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.xlsx"'
-            return response
+                buf = BytesIO()
+                wb.save(buf)
+                buf.seek(0)
+                response = HttpResponse(buf.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = f'attachment; filename="bels-haven-backup-{date_str}.xlsx"'
+                return response
+            except Exception as e:
+                logger.exception('Excel export failed')
+                return Response({'error': f'Excel export failed: {str(e)}'}, status=500)
 
         if fmt == 'pdf':
             try:
