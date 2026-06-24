@@ -446,7 +446,13 @@ function ProductsTab() {
                 )}
               </div>
               <div className="product-admin-card__actions">
-                <button title="Edit" onClick={() => { setEditProduct(p); setShowForm(true); }}><Edit3 size={15} /></button>
+                <button title="Edit" onClick={async () => {
+                  try {
+                    const res = await API.get(`/products/${p.slug}/`);
+                    setEditProduct(res.data);
+                    setShowForm(true);
+                  } catch { toast.error('Failed to load product details'); }
+                }}><Edit3 size={15} /></button>
                 <button title={p.status === 'active' ? 'Hide' : 'Show'} onClick={() => toggle(p)}>
                   {p.status === 'active' ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -613,7 +619,7 @@ function ProductForm({ product, categories, onDone, onCancel }) {
           <label>Description *</label>
           <textarea className="input-field" rows={4} value={form.description} onChange={set('description')} placeholder="Describe the product in detail…" />
         </div>
-        <div className="admin-form-grid admin-form-grid--3">
+        <div className={`admin-form-grid ${hasVariants ? 'admin-form-grid--2' : 'admin-form-grid--3'}`}>
           <div className="form-group">
             <label>Category</label>
             <select className="input-field" value={form.category} onChange={set('category')}>
@@ -622,13 +628,15 @@ function ProductForm({ product, categories, onDone, onCancel }) {
             </select>
           </div>
           <div className="form-group">
-            <label>Price (GH₵) *</label>
+            <label>Price (GH₵) *{hasVariants ? ' (base/display)' : ''}</label>
             <input className="input-field" type="number" value={form.price} onChange={set('price')} placeholder="5000" />
           </div>
-          <div className="form-group">
-            <label>Stock Quantity *</label>
-            <input className="input-field" type="number" value={form.stock_quantity} onChange={set('stock_quantity')} placeholder="10" />
-          </div>
+          {!hasVariants && (
+            <div className="form-group">
+              <label>Stock Quantity *</label>
+              <input className="input-field" type="number" value={form.stock_quantity} onChange={set('stock_quantity')} placeholder="10" />
+            </div>
+          )}
         </div>
 
         {/* Type */}
@@ -761,7 +769,8 @@ function ProductForm({ product, categories, onDone, onCancel }) {
         )}
 
         {/* Images */}
-        <div className="form-section-label">{hasVariants ? 'Default Product Images' : 'Product Images'}</div>
+        <div className="form-section-label">{hasVariants ? 'Default Product Images (optional)' : 'Product Images'}</div>
+        {hasVariants && <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>Optional — each variant has its own images. This is a fallback image shown on the shop grid.</p>}
         <div className="image-upload-area">
           <label className="image-upload-btn">
             <Upload size={20} />

@@ -356,7 +356,13 @@ function ProductsTab() {
                 )}
               </div>
               <div className="product-admin-card__actions">
-                <button title="Edit" onClick={() => { setEditProduct(p); setShowForm(true); }}><Edit3 size={15} /></button>
+                <button title="Edit" onClick={async () => {
+                  try {
+                    const res = await API.get(`/products/${p.slug}/`);
+                    setEditProduct(res.data);
+                    setShowForm(true);
+                  } catch { toast.error('Failed to load product details'); }
+                }}><Edit3 size={15} /></button>
                 <button title={p.status === 'active' ? 'Hide' : 'Show'} onClick={() => toggle(p)}>
                   {p.status === 'active' ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>

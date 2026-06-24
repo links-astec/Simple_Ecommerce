@@ -52,6 +52,12 @@ class ProductListSerializer(serializers.ModelSerializer):
         primary = obj.images.filter(is_primary=True).first() or obj.images.first()
         if primary:
             return _absolute_image_url(self.context.get('request'), primary.image.url)
+        if obj.parent is None:
+            first_variant = obj.variants.filter(status='active').first()
+            if first_variant:
+                v_img = first_variant.images.filter(is_primary=True).first() or first_variant.images.first()
+                if v_img:
+                    return _absolute_image_url(self.context.get('request'), v_img.image.url)
         return None
 
     def get_variant_count(self, obj):
