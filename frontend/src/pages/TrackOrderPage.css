@@ -101,6 +101,36 @@
 
 .track-back-btn:hover { text-decoration: underline; }
 
+/* Saved orders */
+.track-saved {
+  max-width: 540px;
+  margin: 8px auto 24px;
+}
+
+.track-saved__title {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.track-saved__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.track-order-card__items {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
 /* Search */
 .track-search {
   display: flex;

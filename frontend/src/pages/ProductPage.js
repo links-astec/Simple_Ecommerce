@@ -14,10 +14,17 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
   const [imgIdx, setImgIdx] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   const loadProduct = useCallback(() => {
     getProduct(slug)
-      .then(res => setProduct(res.data))
+      .then(res => {
+        setProduct(res.data);
+        const variants = res.data.variants || [];
+        if (variants.length > 0 && !selectedVariant) {
+          setSelectedVariant(variants[0]);
+        }
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [slug]);
@@ -25,6 +32,7 @@ export default function ProductPage() {
   useEffect(() => {
     window.scrollTo(0, 0);
     setLoading(true);
+    setSelectedVariant(null);
     loadProduct();
   }, [slug, loadProduct]);
 
@@ -47,20 +55,47 @@ export default function ProductPage() {
     </div>
   );
 
-  const isPreorder = product.product_type === 'preorder';
-  const isSoldOut = product.stock_quantity === 0;
-  const images = product.images_list || [];
+  const variants = product.variants || [];
+  const hasVariants = variants.length > 0;
+  const active = selectedVariant || product;
+
+  const isPreorder = (hasVariants ? active.product_type : product.product_type) === 'preorder';
+  const stock = hasVariants ? active.stock_quantity : product.stock_quantity;
+  const isSoldOut = stock === 0;
+  const price = parseFloat(hasVariants ? active.price : product.price);
+  const shippingFee = parseFloat(hasVariants ? active.shipping_fee : product.shipping_fee);
+  const images = hasVariants && active.images?.length > 0 ? active.images : (product.images_list || []);
   const currentImg = images[imgIdx]?.url;
+  const deliveryTimeframe = hasVariants ? (active.delivery_timeframe || product.delivery_timeframe) : product.delivery_timeframe;
+  const preorderEta = hasVariants ? (active.preorder_eta || product.preorder_eta) : product.preorder_eta;
+  const preorderShippingFee = parseFloat(hasVariants ? (active.preorder_shipping_fee || product.preorder_shipping_fee) : product.preorder_shipping_fee);
+
+  const selectVariant = (v) => {
+    setSelectedVariant(v);
+    setImgIdx(0);
+    setQty(1);
+  };
 
   const handleAdd = () => {
     if (isSoldOut) return;
-    addItem({ ...product, primary_image: currentImg }, qty);
-    toast.success(`${product.name} added to bag`);
+    const cartItem = {
+      id: hasVariants ? active.id : product.id,
+      name: hasVariants && active.variant_label ? `${product.name} (${active.variant_label})` : product.name,
+      slug: hasVariants ? active.slug : product.slug,
+      price: price,
+      shipping_fee: shippingFee,
+      stock_quantity: stock,
+      product_type: isPreorder ? 'preorder' : 'available',
+      primary_image: currentImg || active.primary_image,
+    };
+    addItem(cartItem, qty);
+    toast.success(`${cartItem.name} added to bag`);
   };
 
   const handleShare = async () => {
     const backendBase = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
-    const shareUrl = `${backendBase}/share/${product.slug}/`;
+    const shareSlug = hasVariants ? active.slug : product.slug;
+    const shareUrl = `${backendBase}/share/${shareSlug}/`;
     if (navigator.share) {
       try {
         await navigator.share({ title: product.name, url: shareUrl });
@@ -75,8 +110,7 @@ export default function ProductPage() {
     }
   };
 
-  const totalPrice = parseFloat(product.price) * qty;
-
+  const totalPrice = price * qty;
 
   return (
     <div className="product-page">
@@ -135,10 +169,25 @@ export default function ProductPage() {
               </button>
             </div>
 
+            {/* Variant selector */}
+            {hasVariants && (
+              <div className="variant-picker">
+                {variants.map(v => (
+                  <button
+                    key={v.id}
+                    className={`variant-pill ${selectedVariant?.id === v.id ? 'active' : ''} ${v.stock_quantity === 0 ? 'sold-out' : ''}`}
+                    onClick={() => selectVariant(v)}
+                  >
+                    {v.variant_label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="product-info__price-row">
-              <span className="product-info__price price">GH₵{parseFloat(product.price).toLocaleString('en-GH')}</span>
-              {!isPreorder && product.shipping_fee > 0 && (
-                <span className="product-info__shipping">+ GH₵{parseFloat(product.shipping_fee).toLocaleString('en-GH')} shipping</span>
+              <span className="product-info__price price">GH₵{price.toLocaleString('en-GH')}</span>
+              {!isPreorder && shippingFee > 0 && (
+                <span className="product-info__shipping">+ GH₵{shippingFee.toLocaleString('en-GH')} shipping</span>
               )}
             </div>
 
@@ -150,33 +199,33 @@ export default function ProductPage() {
             <div className="product-info__meta">
               {isPreorder ? (
                 <>
-                  {product.preorder_eta && (
+                  {preorderEta && (
                     <div className="meta-item">
                       <Clock size={15} className="meta-item__icon" />
                       <div>
                         <span className="meta-item__label">Estimated Arrival</span>
-                        <span className="meta-item__value">{product.preorder_eta}</span>
+                        <span className="meta-item__value">{preorderEta}</span>
                       </div>
                     </div>
                   )}
-                  {product.preorder_shipping_fee > 0 && (
+                  {preorderShippingFee > 0 && (
                     <div className="meta-item">
                       <Truck size={15} className="meta-item__icon" />
                       <div>
                         <span className="meta-item__label">Shipping fee (when ready)</span>
-                        <span className="meta-item__value">GH₵{parseFloat(product.preorder_shipping_fee).toLocaleString('en-GH')}</span>
+                        <span className="meta-item__value">GH₵{preorderShippingFee.toLocaleString('en-GH')}</span>
                       </div>
                     </div>
                   )}
                 </>
               ) : (
                 <>
-                  {product.delivery_timeframe && (
+                  {deliveryTimeframe && (
                     <div className="meta-item">
                       <Truck size={15} className="meta-item__icon" />
                       <div>
                         <span className="meta-item__label">Delivery</span>
-                        <span className="meta-item__value">{product.delivery_timeframe}</span>
+                        <span className="meta-item__value">{deliveryTimeframe}</span>
                       </div>
                     </div>
                   )}
@@ -186,7 +235,7 @@ export default function ProductPage() {
                 <Package size={15} className="meta-item__icon" />
                 <div>
                   <span className="meta-item__label">{isPreorder ? 'Slots available' : 'In stock'}</span>
-                  <span className="meta-item__value">{product.stock_quantity}</span>
+                  <span className="meta-item__value">{stock}</span>
                 </div>
               </div>
             </div>
@@ -197,7 +246,7 @@ export default function ProductPage() {
                 <div className="qty-selector">
                   <button onClick={() => setQty(q => Math.max(1, q-1))}>−</button>
                   <span>{qty}</span>
-                  <button onClick={() => setQty(q => Math.min(product.stock_quantity, q+1))}>+</button>
+                  <button onClick={() => setQty(q => Math.min(stock, q+1))}>+</button>
                 </div>
                 <button className="btn-primary product-info__add-btn" onClick={handleAdd}>
                   <ShoppingBag size={16} />
@@ -208,13 +257,13 @@ export default function ProductPage() {
 
             {isSoldOut && (
               <div className="product-info__sold-out">
-                <p>This item is currently sold out.</p>
+                <p>{hasVariants && active.variant_label ? `${active.variant_label} is` : 'This item is'} currently sold out.</p>
               </div>
             )}
 
             {isPreorder && (
               <div className="product-info__preorder-note">
-                <p>🛍️ <strong>Pre-order Notice:</strong> You will pay for shipping separately when your item is ready to ship. We'll email you with the payment link.</p>
+                <p><strong>Pre-order Notice:</strong> You will pay for shipping separately when your item is ready to ship. We'll email you with the payment link.</p>
               </div>
             )}
           </div>

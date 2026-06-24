@@ -2,6 +2,14 @@ from rest_framework import serializers
 from .models import Category, Product, ProductImage, Order, OrderItem, SiteSettings
 
 
+def _absolute_image_url(request, url):
+    if url and url.startswith('http'):
+        return url
+    if request:
+        return request.build_absolute_uri(url)
+    return url
+
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
@@ -16,15 +24,18 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'description', 'image', 'product_count']
 
     def get_product_count(self, obj):
-        return obj.products.filter(status='active').count()
+        return obj.products.filter(status='active', parent__isnull=True).count()
 
 
 class ProductListSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     primary_image = serializers.SerializerMethodField()
-    # Allow writing category by id
+    variant_count = serializers.SerializerMethodField()
     category = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(), allow_null=True, required=False
+    )
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), allow_null=True, required=False
     )
 
     class Meta:
@@ -34,22 +45,25 @@ class ProductListSerializer(serializers.ModelSerializer):
             'product_type', 'status', 'stock_quantity', 'delivery_timeframe',
             'preorder_eta', 'preorder_available_date', 'preorder_shipped',
             'preorder_shipping_fee', 'is_featured', 'category', 'category_name',
-            'primary_image',
+            'primary_image', 'variant_label', 'variant_count', 'parent',
         ]
 
     def get_primary_image(self, obj):
         primary = obj.images.filter(is_primary=True).first() or obj.images.first()
         if primary:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(primary.image.url)
-            return primary.image.url
+            return _absolute_image_url(self.context.get('request'), primary.image.url)
         return None
+
+    def get_variant_count(self, obj):
+        if hasattr(obj, '_prefetched_objects_cache') and 'variants' in obj._prefetched_objects_cache:
+            return len([v for v in obj.variants.all() if v.status == 'active'])
+        return obj.variants.filter(status='active').count()
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     images_list = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -57,18 +71,45 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'description', 'price', 'shipping_fee',
             'product_type', 'status', 'stock_quantity', 'delivery_timeframe',
             'preorder_eta', 'preorder_available_date', 'preorder_shipped',
-            'preorder_shipping_fee', 'is_featured', 'category', 'images_list', 'created_at',
+            'preorder_shipping_fee', 'is_featured', 'category', 'images_list',
+            'created_at', 'variant_label', 'parent', 'variants',
         ]
 
-    def get_images_list(self, obj):
+    def _build_image_list(self, obj):
         request = self.context.get('request')
         images = []
         for img in obj.images.all():
-            url = img.image.url
-            if request:
-                url = request.build_absolute_uri(url)
+            url = _absolute_image_url(request, img.image.url)
             images.append({'id': img.id, 'url': url, 'alt_text': img.alt_text, 'is_primary': img.is_primary})
         return images
+
+    def get_images_list(self, obj):
+        return self._build_image_list(obj)
+
+    def get_variants(self, obj):
+        if obj.parent is not None:
+            return []
+        request = self.context.get('request')
+        variant_qs = obj.variants.filter(status='active').prefetch_related('images')
+        result = []
+        for v in variant_qs:
+            primary_img = v.images.filter(is_primary=True).first() or v.images.first()
+            img_url = _absolute_image_url(request, primary_img.image.url) if primary_img else None
+            result.append({
+                'id': str(v.id),
+                'slug': v.slug,
+                'variant_label': v.variant_label,
+                'price': str(v.price),
+                'shipping_fee': str(v.shipping_fee),
+                'stock_quantity': v.stock_quantity,
+                'primary_image': img_url,
+                'images': self._build_image_list(v),
+                'product_type': v.product_type,
+                'preorder_eta': v.preorder_eta,
+                'preorder_shipping_fee': str(v.preorder_shipping_fee),
+                'delivery_timeframe': v.delivery_timeframe,
+            })
+        return result
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -115,8 +156,11 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             shipping_fee=total_shipping,
         )
         for product, qty, shipping in item_objects:
+            display_name = product.name
+            if product.variant_label:
+                display_name = f"{product.name} ({product.variant_label})"
             OrderItem.objects.create(
-                order=order, product=product, product_name=product.name,
+                order=order, product=product, product_name=display_name,
                 product_type=product.product_type, quantity=qty,
                 unit_price=product.price, shipping_fee=shipping,
             )

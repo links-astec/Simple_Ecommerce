@@ -14,8 +14,22 @@ export default function PaymentVerifyPage() {
     if (!reference) { setStatus('error'); return; }
     verifyPayment(reference)
       .then(res => {
-        setOrder(res.data.order);
+        const o = res.data.order;
+        setOrder(o);
         setStatus('success');
+        try {
+          const saved = JSON.parse(localStorage.getItem('bh_orders') || '[]');
+          if (!saved.find(s => s.reference === o.reference)) {
+            saved.unshift({
+              reference: o.reference,
+              total_amount: o.total_amount,
+              status: o.status,
+              created_at: o.created_at,
+              items_summary: o.items.map(i => i.product_name).join(', '),
+            });
+            localStorage.setItem('bh_orders', JSON.stringify(saved.slice(0, 20)));
+          }
+        } catch {}
       })
       .catch(() => setStatus('error'));
   }, [reference]);

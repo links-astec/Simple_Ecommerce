@@ -9,7 +9,8 @@ export default function ProductCard({ product }) {
   const { addItem } = useCart();
   const isPreorder = product.product_type === 'preorder';
   const isSoldOut = product.stock_quantity === 0;
-  const canAdd = !isSoldOut;
+  const hasVariants = product.variant_count > 0;
+  const canAdd = !isSoldOut && !hasVariants;
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -38,13 +39,18 @@ export default function ProductCard({ product }) {
             <span>{isPreorder ? 'Pre-order' : 'Add to Bag'}</span>
           </button>
         )}
+        {hasVariants && (
+          <div className="product-card__quick-add product-card__quick-add--always">
+            <span>{product.variant_count} options available</span>
+          </div>
+        )}
       </div>
 
       <div className="product-card__info">
         <p className="product-card__category">{product.category_name}</p>
         <h3 className="product-card__name">{product.name}</h3>
         <div className="product-card__footer">
-          <span className="product-card__price price">GH₵{parseFloat(product.price).toLocaleString('en-GH')}</span>
+          <span className="product-card__price price">{hasVariants ? 'from ' : ''}GH₵{parseFloat(product.price).toLocaleString('en-GH')}</span>
           {isPreorder && product.preorder_eta && (
             <span className="product-card__eta">
               <Clock size={11} />

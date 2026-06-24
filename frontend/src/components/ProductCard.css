@@ -85,6 +85,11 @@
   transform: translateY(0);
 }
 
+.product-card__quick-add--always {
+  transform: translateY(0);
+  cursor: default;
+}
+
 .product-card__quick-add:hover {
   background: var(--gold-muted);
 }

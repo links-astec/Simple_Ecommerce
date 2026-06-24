@@ -400,6 +400,70 @@
   flex-shrink: 0;
 }
 
+/* Delete action card */
+.ai-action-card.delete {
+  border-color: rgba(192, 57, 43, 0.3);
+  background: rgba(192, 57, 43, 0.06);
+}
+
+.ai-action-card.delete .ai-action-card__icon { background: rgba(192, 57, 43, 0.12); color: #c0392b; }
+
+.ai-action-card.cancelled { opacity: 0.5; }
+
+.status-text.cancelled { color: var(--text-muted); font-style: italic; }
+
+/* Confirmation bar */
+.ai-confirm-bar {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--gold-border);
+  border-radius: 8px;
+  background: var(--gold-muted);
+}
+
+.ai-confirm-bar--danger {
+  border-color: rgba(192, 57, 43, 0.3);
+  background: rgba(192, 57, 43, 0.06);
+}
+
+.ai-confirm-bar__text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+
+.ai-confirm-bar__pw {
+  margin-bottom: 10px;
+}
+
+.ai-confirm-bar__pw .input-field {
+  font-size: 0.85rem;
+  padding: 10px 12px;
+}
+
+.ai-confirm-bar__error {
+  display: block;
+  font-size: 0.72rem;
+  color: #c0392b;
+  margin-top: 4px;
+}
+
+.ai-confirm-bar__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ai-confirm-bar__actions .btn-primary {
+  padding: 8px 18px;
+  font-size: 0.7rem;
+}
+
+.ai-confirm-bar__actions .btn-ghost {
+  padding: 8px 14px;
+  font-size: 0.7rem;
+}
+
 /* Spin animation for loader */
 .spin {
   animation: spin 1s linear infinite;

@@ -2,11 +2,71 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Plus, Edit3, Trash2, Eye, EyeOff, LogOut, Menu,
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
-  Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send, Settings
+  Clock, AlertCircle, RefreshCw, Sparkles, Users, MessageCircle, Mail, Send, Settings, Lock
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import API, { adminLogin, getAdminToken } from '../api';
 import AiAssistantTab from './AiAssistantTab';
 import './AdminPage.css';
+
+// ─── Confirm Modal ──────────────────────────────────────────────────────────
+function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel, danger, requirePassword }) {
+  const [pw, setPw] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
+  const handleConfirm = async () => {
+    if (requirePassword) {
+      if (!pw.trim()) return;
+      setVerifying(true);
+      try {
+        await adminLogin(pw);
+        onConfirm(pw);
+      } catch {
+        toast.error('Invalid password');
+      } finally {
+        setVerifying(false);
+      }
+    } else {
+      onConfirm();
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{danger && <AlertCircle size={16} style={{ color: 'var(--error)', marginRight: 8, verticalAlign: '-2px' }} />}{title || 'Confirm'}</h3>
+          <button className="modal-close" onClick={onCancel}><X size={18} /></button>
+        </div>
+        {message && <p className="confirm-modal__message">{message}</p>}
+        {requirePassword && (
+          <div className="confirm-modal__password">
+            <label><Lock size={12} /> Enter admin password to confirm</label>
+            <input
+              className="input-field"
+              type="password"
+              value={pw}
+              onChange={e => setPw(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleConfirm()}
+              placeholder="Admin password"
+              autoFocus
+            />
+          </div>
+        )}
+        <div className="modal-actions">
+          <button className="btn-ghost" onClick={onCancel}>Cancel</button>
+          <button
+            className={`btn-primary ${danger ? 'btn-danger' : ''}`}
+            onClick={handleConfirm}
+            disabled={requirePassword && (!pw.trim() || verifying)}
+          >
+            {verifying ? <><div className="spinner" /><span>Verifying...</span></> : <span>{confirmLabel || 'Confirm'}</span>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
@@ -200,14 +260,19 @@ function CategoriesTab() {
       setEditId(null);
       load();
     } catch (e) {
-      alert('Error saving category');
+      toast.error('Error saving category');
     } finally { setSaving(false); }
   };
 
-  const del = async (id) => {
-    if (!window.confirm('Delete this category?')) return;
-    await API.delete(`/categories/${id}/`);
-    load();
+  const [confirmDel, setConfirmDel] = useState(null);
+  const del = (id) => {
+    setConfirmDel({
+      title: 'Delete Category',
+      message: 'This will permanently delete this category. Products in it will become uncategorized.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => { setConfirmDel(null); await API.delete(`/categories/${id}/`); load(); },
+    });
   };
 
   const startEdit = (cat) => {
@@ -269,6 +334,7 @@ function CategoriesTab() {
           </tbody>
         </table>
       </div>
+      {confirmDel && <ConfirmModal {...confirmDel} onCancel={() => setConfirmDel(null)} />}
     </div>
   );
 }
@@ -306,10 +372,16 @@ function ProductsTab() {
     load();
   };
 
-  const del = async (slug) => {
-    if (!window.confirm('Delete this product?')) return;
-    await API.delete(`/products/${slug}/`);
-    load();
+  const [confirmDel, setConfirmDel] = useState(null);
+  const del = (slug, name) => {
+    setConfirmDel({
+      title: 'Delete Product',
+      message: `Are you sure you want to permanently delete "${name}"? This cannot be undone.`,
+      confirmLabel: 'Delete Product',
+      danger: true,
+      requirePassword: true,
+      onConfirm: async () => { setConfirmDel(null); await API.delete(`/products/${slug}/`); load(); toast.success('Product deleted'); },
+    });
   };
 
   const filtered = products.filter(p =>
@@ -378,7 +450,7 @@ function ProductsTab() {
                 <button title={p.status === 'active' ? 'Hide' : 'Show'} onClick={() => toggle(p)}>
                   {p.status === 'active' ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
-                <button title="Delete" onClick={() => del(p.slug)}><Trash2 size={15} /></button>
+                <button title="Delete" onClick={() => del(p.slug, p.name)}><Trash2 size={15} /></button>
               </div>
             </div>
           ))}
@@ -387,6 +459,7 @@ function ProductsTab() {
           )}
         </div>
       )}
+      {confirmDel && <ConfirmModal {...confirmDel} onCancel={() => setConfirmDel(null)} />}
     </div>
   );
 }
@@ -397,6 +470,19 @@ function ProductForm({ product, categories, onDone, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [images, setImages] = useState([]);
   const [existingImages, setExistingImages] = useState(product?.images_list || []);
+  const [hasVariants, setHasVariants] = useState((product?.variants || []).length > 0);
+  const [variants, setVariants] = useState(() => {
+    const pvs = product?.variants || [];
+    return pvs.map(v => ({
+      id: v.id,
+      variant_label: v.variant_label || '',
+      price: v.price || '',
+      stock_quantity: v.stock_quantity || '',
+      shipping_fee: v.shipping_fee || '0',
+      images: [],
+      existingImages: v.images || [],
+    }));
+  });
   const [form, setForm] = useState({
     name: product?.name || '',
     slug: product?.slug || '',
@@ -431,27 +517,65 @@ function ProductForm({ product, categories, onDone, onCancel }) {
   const removeNewImage = i => setImages(prev => prev.filter((_, idx) => idx !== i));
   const removeExisting = id => setExistingImages(prev => prev.filter(img => img.id !== id));
 
+  const addVariant = () => setVariants(prev => [...prev, { variant_label: '', price: form.price || '', stock_quantity: '', shipping_fee: form.shipping_fee || '0', images: [], existingImages: [] }]);
+  const removeVariant = i => setVariants(prev => prev.filter((_, idx) => idx !== i));
+  const setVariantField = (i, key, val) => setVariants(prev => prev.map((v, idx) => idx === i ? { ...v, [key]: val } : v));
+  const handleVariantImages = (i, e) => {
+    const files = Array.from(e.target.files);
+    setVariants(prev => prev.map((v, idx) => idx === i ? { ...v, images: [...v.images, ...files] } : v));
+  };
+
+  const uploadImageFile = async (file, isPrimary) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    fd.append('is_primary', isPrimary ? 'true' : 'false');
+    const res = await API.post('/product-images/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return res.data.id;
+  };
+
   const save = async () => {
-    if (!form.name || !form.price || !form.stock_quantity) {
-      alert('Please fill in name, price, and stock quantity.');
+    if (!form.name || !form.price) {
+      toast.error('Please fill in name and price.');
+      return;
+    }
+    if (!hasVariants && !form.stock_quantity) {
+      toast.error('Please fill in stock quantity.');
+      return;
+    }
+    if (hasVariants && variants.length === 0) {
+      toast.error('Please add at least one variant or switch to simple product.');
       return;
     }
     setSaving(true);
     try {
       let imageIds = existingImages.map(i => i.id);
-
-      // Upload new images first
       for (const file of images) {
-        const fd = new FormData();
-        fd.append('image', file);
-        fd.append('is_primary', imageIds.length === 0 ? 'true' : 'false');
-        const res = await API.post('/product-images/', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        imageIds.push(res.data.id);
+        const id = await uploadImageFile(file, imageIds.length === 0);
+        imageIds.push(id);
       }
 
       const payload = { ...form, images: imageIds };
+
+      if (hasVariants) {
+        const variantPayloads = [];
+        for (const v of variants) {
+          let vImageIds = (v.existingImages || []).map(i => i.id);
+          for (const file of (v.images || [])) {
+            const id = await uploadImageFile(file, vImageIds.length === 0);
+            vImageIds.push(id);
+          }
+          variantPayloads.push({
+            id: v.id || undefined,
+            variant_label: v.variant_label,
+            price: v.price,
+            stock_quantity: v.stock_quantity || 0,
+            shipping_fee: v.shipping_fee || 0,
+            images: vImageIds,
+          });
+        }
+        payload.variants = variantPayloads;
+        if (!payload.stock_quantity) payload.stock_quantity = 0;
+      }
 
       if (isEdit) {
         await API.put(`/products/${product.slug}/`, payload);
@@ -461,7 +585,7 @@ function ProductForm({ product, categories, onDone, onCancel }) {
       onDone();
     } catch (e) {
       console.error(e);
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Error saving product');
+      toast.error(e.response?.data ? JSON.stringify(e.response.data) : 'Error saving product');
     } finally { setSaving(false); }
   };
 
@@ -574,8 +698,70 @@ function ProductForm({ product, categories, onDone, onCancel }) {
           </label>
         </div>
 
+        {/* Variants */}
+        <div className="form-section-label">Product Variants</div>
+        <div className="type-toggle" style={{ marginBottom: 16 }}>
+          <button className={`type-btn ${!hasVariants ? 'active' : ''}`} onClick={() => setHasVariants(false)}>
+            Simple Product
+          </button>
+          <button className={`type-btn ${hasVariants ? 'active' : ''}`} onClick={() => { setHasVariants(true); if (variants.length === 0) addVariant(); }}>
+            Product with Variants
+          </button>
+        </div>
+
+        {hasVariants && (
+          <div className="variants-section">
+            {variants.map((v, i) => (
+              <div key={i} className="variant-row">
+                <div className="variant-row__header">
+                  <span className="variant-row__label">Variant {i + 1}</span>
+                  <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '0.7rem' }} onClick={() => removeVariant(i)}><X size={12} /> Remove</button>
+                </div>
+                <div className="admin-form-grid admin-form-grid--4">
+                  <div className="form-group">
+                    <label>Label *</label>
+                    <input className="input-field" value={v.variant_label} onChange={e => setVariantField(i, 'variant_label', e.target.value)} placeholder="e.g. Red, Size M" />
+                  </div>
+                  <div className="form-group">
+                    <label>Price (GH₵) *</label>
+                    <input className="input-field" type="number" value={v.price} onChange={e => setVariantField(i, 'price', e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label>Stock *</label>
+                    <input className="input-field" type="number" value={v.stock_quantity} onChange={e => setVariantField(i, 'stock_quantity', e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label>Shipping (GH₵)</label>
+                    <input className="input-field" type="number" value={v.shipping_fee} onChange={e => setVariantField(i, 'shipping_fee', e.target.value)} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginTop: 8 }}>
+                  <label>Variant Images</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {(v.existingImages || []).map(img => (
+                      <div key={img.id} className="image-preview" style={{ width: 48, height: 60 }}>
+                        <img src={img.url} alt="" />
+                      </div>
+                    ))}
+                    {(v.images || []).map((file, fi) => (
+                      <div key={fi} className="image-preview" style={{ width: 48, height: 60 }}>
+                        <img src={URL.createObjectURL(file)} alt="" />
+                      </div>
+                    ))}
+                    <label className="image-upload-btn" style={{ width: 48, height: 60, padding: 0, fontSize: '0.6rem' }}>
+                      <Upload size={14} />
+                      <input type="file" multiple accept="image/*" onChange={e => handleVariantImages(i, e)} style={{ display: 'none' }} />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button className="btn-outline" style={{ marginTop: 8 }} onClick={addVariant}>+ Add Variant</button>
+          </div>
+        )}
+
         {/* Images */}
-        <div className="form-section-label">Product Images</div>
+        <div className="form-section-label">{hasVariants ? 'Default Product Images' : 'Product Images'}</div>
         <div className="image-upload-area">
           <label className="image-upload-btn">
             <Upload size={20} />

@@ -4,6 +4,7 @@ import {
   ShoppingBag, Tag, BarChart2, Upload, X, Check,
   Clock, AlertCircle, RefreshCw, Sparkles
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import API from '../api';
 import AiAssistantTab from './AiAssistantTab';
 import './AdminPage.css';
@@ -187,14 +188,14 @@ function CategoriesTab() {
       setEditId(null);
       load();
     } catch (e) {
-      alert('Error saving category');
+      toast.error('Error saving category');
     } finally {
       setSaving(false);
     }
   };
 
   const del = async (id) => {
-    if (!window.confirm('Delete this category?')) return;
+    if (!confirm('Delete this category?')) return;
     await API.delete(`/categories/${id}/`);
     load();
   };
@@ -291,7 +292,7 @@ function ProductsTab() {
   };
 
   const del = async (slug) => {
-    if (!window.confirm('Delete this product?')) return;
+    if (!confirm('Delete this product?')) return;
     await API.delete(`/products/${slug}/`);
     load();
   };
@@ -411,7 +412,7 @@ function ProductForm({ product, categories, onDone, onCancel }) {
 
   const save = async () => {
     if (!form.name || !form.price || !form.stock_quantity) {
-      alert('Please fill in name, price, and stock quantity.');
+      toast.error('Please fill in name, price, and stock quantity.');
       return;
     }
     setSaving(true);
@@ -436,7 +437,7 @@ function ProductForm({ product, categories, onDone, onCancel }) {
       onDone();
     } catch (e) {
       console.error(e);
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Error saving product');
+      toast.error(e.response?.data ? JSON.stringify(e.response.data) : 'Error saving product');
     } finally {
       setSaving(false);
     }

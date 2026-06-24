@@ -15,6 +15,17 @@ const STATUS_META = {
   cancelled:  { label: 'Cancelled',        icon: XCircle,      color: '#e05a5a' },
 };
 
+function updateSavedOrderStatus(ref, newStatus) {
+  try {
+    const saved = JSON.parse(localStorage.getItem('bh_orders') || '[]');
+    const idx = saved.findIndex(o => o.reference === ref);
+    if (idx !== -1) {
+      saved[idx].status = newStatus;
+      localStorage.setItem('bh_orders', JSON.stringify(saved));
+    }
+  } catch {}
+}
+
 export default function TrackOrderPage() {
   const [mode, setMode] = useState('reference');
   const [reference, setReference] = useState('');
@@ -23,6 +34,9 @@ export default function TrackOrderPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [savedOrders, setSavedOrders] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('bh_orders') || '[]'); } catch { return []; }
+  });
 
   const trackByRef = async () => {
     const ref = reference.trim().toUpperCase();
@@ -34,6 +48,10 @@ export default function TrackOrderPage() {
     try {
       const res = await getOrder(ref);
       setOrder(res.data);
+      updateSavedOrderStatus(res.data.reference, res.data.status);
+      setSavedOrders(prev => {
+        try { return JSON.parse(localStorage.getItem('bh_orders') || '[]'); } catch { return prev; }
+      });
     } catch {
       setError('Order not found. Please check your reference and try again.');
     } finally {
@@ -134,6 +152,38 @@ export default function TrackOrderPage() {
         )}
 
         {error && <p className="track-error">{error}</p>}
+
+        {/* Saved orders from localStorage */}
+        {savedOrders.length > 0 && !order && orders.length === 0 && !loading && (
+          <div className="track-saved">
+            <p className="track-saved__title">Your Recent Orders</p>
+            <div className="track-saved__list">
+              {savedOrders.map(o => (
+                <button
+                  key={o.reference}
+                  className="track-order-card"
+                  onClick={() => { setReference(o.reference); setMode('reference'); setError(''); setOrder(null); setOrders([]); setLoading(true);
+                    getOrder(o.reference).then(res => { setOrder(res.data); updateSavedOrderStatus(res.data.reference, res.data.status); setSavedOrders(JSON.parse(localStorage.getItem('bh_orders') || '[]')); }).catch(() => setError('Could not load order.')).finally(() => setLoading(false));
+                  }}
+                >
+                  <div className="track-order-card__left">
+                    <span className="track-order-card__ref">{o.reference}</span>
+                    <span className="track-order-card__date">
+                      {o.created_at ? new Date(o.created_at).toLocaleDateString('en-GH', { dateStyle: 'medium' }) : ''}
+                    </span>
+                    {o.items_summary && <span className="track-order-card__items">{o.items_summary}</span>}
+                  </div>
+                  <div className="track-order-card__right">
+                    <span className="price">GH₵{parseFloat(o.total_amount || 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}</span>
+                    <span className="badge" style={{ color: STATUS_META[o.status]?.color, fontSize: '0.55rem' }}>
+                      {STATUS_META[o.status]?.label || o.status}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Email results - order list */}
         {orders.length > 0 && !order && (

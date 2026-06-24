@@ -84,10 +84,16 @@ class ProductListView(generics.ListCreateAPIView):
         return []
 
     def get_queryset(self):
-        qs = Product.objects.prefetch_related('images')
+        qs = Product.objects.prefetch_related('images', 'variants')
         is_admin = IsAdminKey().has_permission(self.request, self)
         if not is_admin:
-            qs = qs.filter(status='active')
+            qs = qs.filter(status='active', parent__isnull=True)
+        else:
+            variants_of = self.request.query_params.get('variants_of')
+            if variants_of:
+                qs = qs.filter(parent__slug=variants_of)
+            elif not self.request.query_params.get('include_variants'):
+                qs = qs.filter(parent__isnull=True)
         category = self.request.query_params.get('category')
         product_type = self.request.query_params.get('type')
         featured = self.request.query_params.get('featured')
@@ -108,19 +114,52 @@ class ProductListView(generics.ListCreateAPIView):
         return ctx
 
     def create(self, request, *args, **kwargs):
+        from django.utils.text import slugify as django_slugify
         data = request.data.copy()
         images = data.pop('images', [])
+        variants_data = data.pop('variants', [])
         if isinstance(images, str):
             import json as _json
             try:
                 images = _json.loads(images)
             except Exception:
                 images = []
+        if isinstance(variants_data, str):
+            import json as _json
+            try:
+                variants_data = _json.loads(variants_data)
+            except Exception:
+                variants_data = []
         serializer = ProductListSerializer(data=data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         product = serializer.save()
         if images:
             product.images.set(images)
+        for v in variants_data:
+            label = v.get('variant_label', '')
+            v_slug = f"{product.slug}-{django_slugify(label)}" if label else f"{product.slug}-v"
+            if Product.objects.filter(slug=v_slug).exists():
+                import secrets
+                v_slug = f"{v_slug}-{secrets.token_hex(2)}"
+            variant = Product.objects.create(
+                parent=product,
+                name=product.name,
+                slug=v_slug,
+                description=product.description,
+                category=product.category,
+                product_type=v.get('product_type', product.product_type),
+                status='active',
+                variant_label=label,
+                price=v.get('price', product.price),
+                stock_quantity=v.get('stock_quantity', 0),
+                shipping_fee=v.get('shipping_fee', product.shipping_fee),
+                delivery_timeframe=v.get('delivery_timeframe', product.delivery_timeframe),
+                preorder_eta=v.get('preorder_eta', product.preorder_eta),
+                preorder_shipping_fee=v.get('preorder_shipping_fee', product.preorder_shipping_fee),
+            )
+            v_images = v.get('images', [])
+            if v_images:
+                variant.images.set(v_images)
         return Response(
             ProductDetailSerializer(product, context={'request': request}).data,
             status=status.HTTP_201_CREATED
@@ -137,8 +176,8 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         if self.request.method == 'GET':
-            return Product.objects.filter(status='active').prefetch_related('images', 'category')
-        return Product.objects.all().prefetch_related('images', 'category')
+            return Product.objects.filter(status='active').prefetch_related('images', 'category', 'variants', 'variants__images')
+        return Product.objects.all().prefetch_related('images', 'category', 'variants', 'variants__images')
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -151,21 +190,68 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         return ctx
 
     def update(self, request, *args, **kwargs):
+        from django.utils.text import slugify as django_slugify
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data.copy()
         images = data.pop('images', None)
+        variants_data = data.pop('variants', None)
         if isinstance(images, str):
             import json as _json
             try:
                 images = _json.loads(images)
             except Exception:
                 images = None
+        if isinstance(variants_data, str):
+            import json as _json
+            try:
+                variants_data = _json.loads(variants_data)
+            except Exception:
+                variants_data = None
         serializer = ProductListSerializer(instance, data=data, partial=partial, context={'request': request})
         serializer.is_valid(raise_exception=True)
         product = serializer.save()
         if images is not None:
             product.images.set(images)
+        if variants_data is not None:
+            existing_ids = set()
+            for v in variants_data:
+                v_id = v.get('id')
+                if v_id:
+                    try:
+                        variant = Product.objects.get(id=v_id, parent=product)
+                        for field in ('variant_label', 'price', 'stock_quantity', 'shipping_fee',
+                                      'delivery_timeframe', 'preorder_eta', 'preorder_shipping_fee', 'product_type'):
+                            if field in v:
+                                setattr(variant, field, v[field])
+                        variant.name = product.name
+                        variant.save()
+                        existing_ids.add(str(variant.id))
+                    except Product.DoesNotExist:
+                        v_id = None
+                if not v_id:
+                    label = v.get('variant_label', '')
+                    v_slug = f"{product.slug}-{django_slugify(label)}" if label else f"{product.slug}-v"
+                    if Product.objects.filter(slug=v_slug).exists():
+                        import secrets
+                        v_slug = f"{v_slug}-{secrets.token_hex(2)}"
+                    variant = Product.objects.create(
+                        parent=product, name=product.name, slug=v_slug,
+                        description=product.description, category=product.category,
+                        product_type=v.get('product_type', product.product_type),
+                        status='active', variant_label=label,
+                        price=v.get('price', product.price),
+                        stock_quantity=v.get('stock_quantity', 0),
+                        shipping_fee=v.get('shipping_fee', product.shipping_fee),
+                        delivery_timeframe=v.get('delivery_timeframe', product.delivery_timeframe),
+                        preorder_eta=v.get('preorder_eta', product.preorder_eta),
+                        preorder_shipping_fee=v.get('preorder_shipping_fee', product.preorder_shipping_fee),
+                    )
+                    existing_ids.add(str(variant.id))
+                v_images = v.get('images')
+                if v_images is not None:
+                    variant.images.set(v_images)
+            product.variants.exclude(id__in=existing_ids).delete()
         return Response(ProductDetailSerializer(product, context={'request': request}).data)
 
 
@@ -185,7 +271,9 @@ class ProductImageUploadView(APIView):
             return Response({'error': 'File too large. Maximum 10 MB allowed'}, status=400)
         is_primary = request.data.get('is_primary', 'false') == 'true'
         img = ProductImage.objects.create(image=image_file, is_primary=is_primary)
-        url = request.build_absolute_uri(img.image.url)
+        url = img.image.url
+        if not url.startswith('http'):
+            url = request.build_absolute_uri(url)
         return Response({'id': img.id, 'url': url, 'is_primary': img.is_primary}, status=201)
 
 
@@ -362,9 +450,9 @@ class PaystackWebhookView(APIView):
 @api_view(['GET'])
 def store_stats(request):
     return Response({
-        'total_products': Product.objects.filter(status='active').count(),
-        'available_products': Product.objects.filter(status='active', product_type='available').count(),
-        'preorder_products': Product.objects.filter(status='active', product_type='preorder').count(),
+        'total_products': Product.objects.filter(status='active', parent__isnull=True).count(),
+        'available_products': Product.objects.filter(status='active', product_type='available', parent__isnull=True).count(),
+        'preorder_products': Product.objects.filter(status='active', product_type='preorder', parent__isnull=True).count(),
         'categories': Category.objects.count(),
     })
 
@@ -423,13 +511,23 @@ def product_share(request, slug):
         raise Http404
 
     primary_img = product.images.filter(is_primary=True).first() or product.images.first()
-    image_url = request.build_absolute_uri(primary_img.image.url) if primary_img else ''
+    image_url = ''
+    if primary_img:
+        image_url = primary_img.image.url
+        if not image_url.startswith('http'):
+            image_url = request.build_absolute_uri(image_url)
 
     frontend_url = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
     product_url = f"{frontend_url}/shop/{product.slug}" if frontend_url else request.build_absolute_uri(f'/shop/{product.slug}')
 
+    if product.parent:
+        product_url = f"{frontend_url}/shop/{product.parent.slug}" if frontend_url else request.build_absolute_uri(f'/shop/{product.parent.slug}')
+
     esc = html_module.escape
-    name = esc(product.name)
+    display_name = product.name
+    if product.variant_label:
+        display_name = f"{product.name} ({product.variant_label})"
+    name = esc(display_name)
     description = esc((product.description or '')[:200])
     price_display = f"GH₵{float(product.price):,.2f}"
 

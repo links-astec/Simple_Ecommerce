@@ -62,6 +62,9 @@ services:
       - key: MEDIA_ROOT
         value: /opt/render/project/src/media
 
+      - key: CLOUDINARY_URL
+        sync: false
+
     disk:
       name: media
       mountPath: /opt/render/project/src/media

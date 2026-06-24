@@ -100,6 +100,33 @@ For updates use:
 
 image_index refers to which uploaded image to use (0 = first image, 1 = second, etc). If no images uploaded, omit image_index.
 
+For products with variants (same product, different colors/sizes/options):
+\`\`\`json
+{
+  "actions": [
+    {
+      "type": "create_product",
+      "data": {
+        "name": "Product Name",
+        "slug": "product-name",
+        "description": "...",
+        "price": "500.00",
+        "stock_quantity": 0,
+        "product_type": "available",
+        "status": "active",
+        "category": <category_id_or_null>,
+        "variants": [
+          { "variant_label": "Red", "price": "500.00", "stock_quantity": 5, "shipping_fee": "20.00" },
+          { "variant_label": "Blue", "price": "550.00", "stock_quantity": 3, "shipping_fee": "20.00" }
+        ]
+      }
+    }
+  ],
+  "message": "Created Product Name with 2 variants"
+}
+\`\`\`
+When variants are used, set parent stock_quantity to 0 (stock lives on each variant).
+
 RULES:
 - Always respond with valid JSON in the \`\`\`json block PLUS a friendly "message" field
 - If no action needed (just a question), return: {"actions": [], "message": "your answer"}

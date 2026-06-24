@@ -58,6 +58,12 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_featured = models.BooleanField(default=False)
 
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.CASCADE,
+        related_name='variants'
+    )
+    variant_label = models.CharField(max_length=100, blank=True, default='')
+
     class Meta:
         ordering = ['-created_at']
 

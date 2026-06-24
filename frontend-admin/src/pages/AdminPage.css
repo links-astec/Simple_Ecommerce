@@ -250,6 +250,7 @@
 .admin-form-grid { display: grid; gap: 16px; margin-bottom: 16px; }
 .admin-form-grid--2 { grid-template-columns: 1fr 1fr; }
 .admin-form-grid--3 { grid-template-columns: 1fr 1fr 1fr; }
+.admin-form-grid--4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
 
 .form-section-label {
   font-size: 0.65rem;
@@ -327,6 +328,32 @@
 .toggle-row { margin: 12px 0; }
 
 .preorder-fields { animation: fadeUp 0.3s ease; }
+
+/* ── Variants ── */
+.variants-section { animation: fadeUp 0.3s ease; }
+
+.variant-row {
+  padding: 16px;
+  border: 1px solid var(--black-border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  background: var(--black-soft);
+}
+
+.variant-row__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.variant-row__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 500;
+}
 
 /* ── Image Upload ── */
 .image-upload-area { margin-bottom: 16px; }
@@ -680,6 +707,7 @@
   .order-detail-grid { grid-template-columns: 1fr; gap: 14px; }
   .admin-form-grid--2,
   .admin-form-grid--3 { grid-template-columns: 1fr; }
+  .admin-form-grid--4 { grid-template-columns: 1fr 1fr; }
   .product-admin-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
 
   /* Form */
@@ -740,6 +768,8 @@
   .ai-tab { height: calc(100vh - 120px); }
   .ai-bubble { max-width: 90%; }
   .order-detail-grid { gap: 10px; }
+  .admin-form-grid--4 { grid-template-columns: 1fr; }
+  .variant-row { padding: 12px; }
 }
 
 /* ── Message Modal ── */
@@ -795,6 +825,35 @@
 .modal-customer-info strong { color: var(--text-primary); font-size: 0.9rem; }
 
 .modal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.confirm-modal__message {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.confirm-modal__password {
+  margin-bottom: 20px;
+}
+
+.confirm-modal__password label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #8b2020, #c0392b, #e74c3c) !important;
+}
+
+.btn-danger:hover::before { opacity: 0 !important; }
+.btn-danger:hover { box-shadow: 0 8px 30px rgba(192, 57, 43, 0.35) !important; }
 
 .modal-sent {
   text-align: center;

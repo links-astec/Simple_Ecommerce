@@ -161,6 +161,31 @@
 
 .product-share-btn:hover { color: var(--gold); border-color: var(--gold-border); }
 
+/* ── Variant picker ── */
+.variant-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.variant-pill {
+  padding: 8px 18px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  border: 1px solid var(--black-border);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.variant-pill:hover { border-color: var(--gold-border); color: var(--gold); }
+.variant-pill.active { border-color: var(--gold); background: var(--gold-muted); color: var(--gold-dark); font-weight: 500; }
+.variant-pill.sold-out { opacity: 0.4; text-decoration: line-through; }
+
 .product-info__price-row {
   display: flex;
   align-items: baseline;

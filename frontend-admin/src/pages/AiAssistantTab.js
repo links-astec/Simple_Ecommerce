@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Upload, X, Package, Check, AlertCircle, Loader, Trash2 } from 'lucide-react';
-import API from '../api';
+import API, { adminLogin } from '../api';
 import './AiAssistantTab.css';
 
 const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY;
@@ -60,7 +60,7 @@ Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, slug
 Products (slugs): ${JSON.stringify(products.map(p => ({ name: p.name, slug: p.slug, type: p.product_type, price: p.price })))}
 
 YOUR CAPABILITIES:
-You can create products, update products, and answer questions about the store.
+You can create products, update products, delete products, and answer questions about the store.
 
 When the owner gives you product info (with or without images), respond with a JSON action block like this:
 
@@ -104,6 +104,41 @@ For updates use:
 \`\`\`
 
 image_index refers to which uploaded image to use (0 = first image, 1 = second, etc). If no images uploaded, omit image_index.
+
+For products with variants (same product, different colors/sizes/options):
+\`\`\`json
+{
+  "actions": [
+    {
+      "type": "create_product",
+      "data": {
+        "name": "Product Name",
+        "slug": "product-name",
+        "description": "...",
+        "price": "500.00",
+        "stock_quantity": 0,
+        "product_type": "available",
+        "status": "active",
+        "category": <category_id_or_null>,
+        "variants": [
+          { "variant_label": "Red", "price": "500.00", "stock_quantity": 5, "shipping_fee": "20.00" },
+          { "variant_label": "Blue", "price": "550.00", "stock_quantity": 3, "shipping_fee": "20.00" }
+        ]
+      }
+    }
+  ],
+  "message": "Created Product Name with 2 variants"
+}
+\`\`\`
+When variants are used, set parent stock_quantity to 0 (stock lives on each variant).
+
+For deleting products use:
+\`\`\`json
+{
+  "actions": [{ "type": "delete_product", "slug": "product-slug" }],
+  "message": "I'll delete that product for you"
+}
+\`\`\`
 
 RULES:
 - Always respond with valid JSON in the \`\`\`json block PLUS a friendly "message" field
@@ -262,69 +297,61 @@ export default function AiAssistantTab() {
         }
       }
 
-      // Update history
       setHistory([...newHistory, { role: 'assistant', content: rawContent }]);
 
-      // Add assistant message
       const msgId = Date.now();
-      addMessage('assistant', rawContent, parsed, 'pending');
-
-      // Execute actions
-      if (parsed.actions && parsed.actions.length > 0) {
-        await executeActions(parsed.actions, userImages, msgId);
-        // Refresh store data
-        fetchProducts().then(setProducts);
-        fetchCategories().then(setCategories);
-      }
+      const hasActions = parsed.actions && parsed.actions.length > 0;
+      setMessages(prev => [...prev, {
+        role: 'assistant', content: rawContent, parsed,
+        status: hasActions ? 'awaiting_confirm' : null,
+        images: [], id: msgId, userImages,
+      }]);
     } catch (err) {
-      addMessage('assistant', null, {
-        actions: [],
-        message: `Sorry, something went wrong: ${err.message}. Please try again.`,
-      }, 'error');
+      setMessages(prev => [...prev, {
+        role: 'assistant', content: null,
+        parsed: { actions: [], message: `Sorry, something went wrong: ${err.message}. Please try again.` },
+        status: 'error', images: [], id: Date.now(),
+      }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const addMessage = (role, content, parsed, status, imgs = []) => {
-    setMessages(prev => [...prev, { role, content, parsed, status, images: imgs, id: Date.now() }]);
-  };
-
-  const executeActions = async (actions, uploadedImages, msgId) => {
+  const confirmActions = async (msgId) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, status: 'executing' } : m));
     const results = [];
-
-    for (const action of actions) {
+    for (const action of (msg.parsed?.actions || [])) {
       try {
         if (action.type === 'create_product') {
           const productData = { ...action.data };
           const imageIndex = productData.image_index;
           delete productData.image_index;
-
-          // Upload image if referenced
-          if (typeof imageIndex === 'number' && uploadedImages[imageIndex]) {
-            const imageId = await uploadImage(uploadedImages[imageIndex].file);
+          if (typeof imageIndex === 'number' && msg.userImages?.[imageIndex]) {
+            const imageId = await uploadImage(msg.userImages[imageIndex].file);
             productData.images = [imageId];
           }
-
           const created = await createProduct(productData);
           results.push({ action: 'created', name: created.name || productData.name, success: true });
-
         } else if (action.type === 'update_product') {
           const updated = await updateProductBySlug(action.slug, action.data);
           results.push({ action: 'updated', name: updated.name || action.slug, success: true });
+        } else if (action.type === 'delete_product') {
+          await API.delete(`/products/${action.slug}/`);
+          results.push({ action: 'deleted', name: action.slug, success: true });
         }
       } catch (err) {
         results.push({ action: action.type, name: action.data?.name || action.slug, success: false, error: err.message });
       }
     }
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, status: 'done', results } : m));
+    fetchProducts().then(setProducts);
+    fetchCategories().then(setCategories);
+  };
 
-    // Update message status
-    setMessages(prev => prev.map(m => {
-      if (m.id === msgId) {
-        return { ...m, status: 'done', results };
-      }
-      return m;
-    }));
+  const cancelActions = (msgId) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, status: 'cancelled' } : m));
   };
 
   const handleKeyDown = (e) => {
@@ -361,7 +388,7 @@ export default function AiAssistantTab() {
       {/* Messages */}
       <div className="ai-messages">
         {messages.map((msg, i) => (
-          <ChatMessage key={msg.id || i} msg={msg} />
+          <ChatMessage key={msg.id || i} msg={msg} onConfirm={confirmActions} onCancel={cancelActions} />
         ))}
         {loading && (
           <div className="ai-message ai-message--assistant">
@@ -433,7 +460,15 @@ export default function AiAssistantTab() {
 
 // ── Chat Message Component ────────────────────────────────────────────────────
 
-function ChatMessage({ msg }) {
+const ACTION_LABELS = {
+  create_product: 'Create Product',
+  update_product: 'Update Product',
+  delete_product: 'Delete Product',
+};
+
+function ChatMessage({ msg, onConfirm, onCancel }) {
+  const [pw, setPw] = useState('');
+  const [pwError, setPwError] = useState('');
   const isUser = msg.role === 'user';
 
   if (isUser) {
@@ -453,9 +488,23 @@ function ChatMessage({ msg }) {
     );
   }
 
-  // Assistant message
   const parsed = msg.parsed;
   const hasActions = parsed?.actions?.length > 0;
+  const hasDelete = hasActions && parsed.actions.some(a => a.type === 'delete_product');
+  const isAwaiting = msg.status === 'awaiting_confirm';
+  const isExecuting = msg.status === 'executing';
+  const isCancelled = msg.status === 'cancelled';
+
+  const handlePasswordConfirm = async () => {
+    if (!pw.trim()) return;
+    try {
+      await adminLogin(pw);
+      setPwError('');
+      onConfirm(msg.id);
+    } catch {
+      setPwError('Invalid password');
+    }
+  };
 
   return (
     <div className="ai-message ai-message--assistant">
@@ -465,38 +514,75 @@ function ChatMessage({ msg }) {
       <div className="ai-bubble ai-bubble--assistant">
         <p className="ai-bubble__text">{parsed?.message}</p>
 
-        {/* Action cards */}
         {hasActions && (
           <div className="ai-actions-list">
             {parsed.actions.map((action, i) => {
               const result = msg.results?.[i];
+              const isDelete = action.type === 'delete_product';
               return (
-                <div key={i} className={`ai-action-card ${result ? (result.success ? 'success' : 'error') : 'pending'}`}>
+                <div key={i} className={`ai-action-card ${result ? (result.success ? 'success' : 'error') : ''} ${isDelete && !result ? 'delete' : ''} ${isCancelled ? 'cancelled' : ''}`}>
                   <div className="ai-action-card__icon">
-                    {!result && <Package size={14} />}
+                    {!result && !isCancelled && (isDelete ? <Trash2 size={14} /> : <Package size={14} />)}
                     {result?.success && <Check size={14} />}
                     {result && !result.success && <AlertCircle size={14} />}
+                    {isCancelled && <X size={14} />}
                   </div>
                   <div className="ai-action-card__info">
-                    <span className="ai-action-card__type">
-                      {action.type === 'create_product' ? 'Create Product' : 'Update Product'}
-                    </span>
+                    <span className="ai-action-card__type">{ACTION_LABELS[action.type] || action.type}</span>
                     <span className="ai-action-card__name">
                       {action.data?.name || action.slug}
                       {action.data?.price && ` — GH₵${action.data.price}`}
                     </span>
-                    {result && !result.success && (
-                      <span className="ai-action-card__error">{result.error}</span>
-                    )}
+                    {result && !result.success && <span className="ai-action-card__error">{result.error}</span>}
                   </div>
                   <div className="ai-action-card__status">
-                    {!result && <span className="status-dot status-dot--pending" />}
-                    {result?.success && <span className="status-text success">Done ✓</span>}
+                    {isAwaiting && <span className="status-dot status-dot--pending" />}
+                    {isExecuting && <Loader size={12} className="spin" />}
+                    {result?.success && <span className="status-text success">Done</span>}
                     {result && !result.success && <span className="status-text error">Failed</span>}
+                    {isCancelled && <span className="status-text cancelled">Cancelled</span>}
                   </div>
                 </div>
               );
             })}
+
+            {/* Confirmation bar */}
+            {isAwaiting && (
+              <div className={`ai-confirm-bar ${hasDelete ? 'ai-confirm-bar--danger' : ''}`}>
+                {hasDelete ? (
+                  <>
+                    <p className="ai-confirm-bar__text">This will permanently delete products. Enter your admin password to confirm.</p>
+                    <div className="ai-confirm-bar__pw">
+                      <input
+                        className="input-field"
+                        type="password"
+                        placeholder="Admin password"
+                        value={pw}
+                        onChange={e => { setPw(e.target.value); setPwError(''); }}
+                        onKeyDown={e => e.key === 'Enter' && handlePasswordConfirm()}
+                      />
+                      {pwError && <span className="ai-confirm-bar__error">{pwError}</span>}
+                    </div>
+                    <div className="ai-confirm-bar__actions">
+                      <button className="btn-ghost" onClick={() => onCancel(msg.id)}>Cancel</button>
+                      <button className="btn-primary btn-danger" onClick={handlePasswordConfirm} disabled={!pw.trim()}>
+                        <Trash2 size={14} /><span>Delete</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="ai-confirm-bar__text">Proceed with these changes?</p>
+                    <div className="ai-confirm-bar__actions">
+                      <button className="btn-ghost" onClick={() => onCancel(msg.id)}>Cancel</button>
+                      <button className="btn-primary" onClick={() => onConfirm(msg.id)}>
+                        <Check size={14} /><span>Confirm</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
