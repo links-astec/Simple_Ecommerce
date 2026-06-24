@@ -1191,23 +1191,100 @@ function SettingsTab() {
     }
   };
 
+  const downloadFile = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const generatePdf = async (data) => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const date = new Date().toISOString().slice(0, 10);
+    const gold = [138, 101, 32];
+    const headerBg = [244, 240, 232];
+
+    doc.setFontSize(20);
+    doc.setTextColor(...gold);
+    doc.text("Bel's Haven - Data Backup", 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Exported: ${new Date().toLocaleString()}`, 14, 26);
+
+    let y = 34;
+    const tableOpts = {
+      startY: y,
+      headStyles: { fillColor: headerBg, textColor: [74, 63, 47], fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7, textColor: [50, 50, 50] },
+      alternateRowStyles: { fillColor: [250, 248, 244] },
+      margin: { left: 14, right: 14 },
+      styles: { cellPadding: 2, lineColor: [232, 224, 208], lineWidth: 0.3 },
+    };
+
+    const addTable = (title, headers, rows) => {
+      doc.setFontSize(12);
+      doc.setTextColor(...gold);
+      doc.text(title, 14, y);
+      y += 4;
+      if (rows.length === 0) {
+        doc.setFontSize(9);
+        doc.setTextColor(150, 150, 150);
+        doc.text('No data', 14, y + 4);
+        y += 12;
+        return;
+      }
+      doc.autoTable({
+        ...tableOpts,
+        startY: y,
+        head: [headers],
+        body: rows.map(r => headers.map(h => {
+          const v = String(r[h] ?? '');
+          return v.length > 80 ? v.slice(0, 80) + '...' : v;
+        })),
+      });
+      y = doc.lastAutoTable.finalY + 10;
+      if (y > 180) { doc.addPage(); y = 16; }
+    };
+
+    addTable(`Categories (${data.categories.length})`, ['name', 'slug', 'description'], data.categories);
+
+    const parents = data.products.filter(p => !p.parent_slug);
+    addTable(`Products (${parents.length})`, ['name', 'category', 'price', 'stock_quantity', 'product_type', 'status'], parents);
+
+    const variants = data.products.filter(p => p.parent_slug);
+    if (variants.length > 0) {
+      addTable(`Variants (${variants.length})`, ['parent_slug', 'variant_label', 'price', 'stock_quantity', 'shipping_fee'], variants);
+    }
+
+    addTable(`Orders (${data.orders.length})`, ['reference', 'customer_name', 'customer_email', 'status', 'total_amount', 'created_at'], data.orders);
+
+    addTable(`Customers (${data.customers.length})`, ['name', 'email', 'phone', 'city', 'country'], data.customers);
+
+    doc.save(`bels-haven-backup-${date}.pdf`);
+  };
+
   const downloadBackup = async (fmt) => {
     setExporting(fmt);
     try {
-      const res = await API.get(`/export/?format=${fmt}`, { responseType: 'blob' });
-      const ext = fmt === 'excel' ? 'xlsx' : fmt === 'pdf' ? 'pdf' : 'json';
-      const date = new Date().toISOString().slice(0, 10);
-      const blob = new Blob([res.data]);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `bels-haven-backup-${date}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      if (fmt === 'pdf') {
+        const res = await API.get('/export/?format=json');
+        const data = res.data;
+        await generatePdf(data);
+      } else {
+        const res = await API.get(`/export/?format=${fmt}`, { responseType: 'blob' });
+        const ext = fmt === 'excel' ? 'xlsx' : 'json';
+        const date = new Date().toISOString().slice(0, 10);
+        downloadFile(new Blob([res.data]), `bels-haven-backup-${date}.${ext}`);
+      }
       toast.success(`${fmt === 'excel' ? 'Excel' : fmt === 'pdf' ? 'PDF' : 'JSON'} backup downloaded`);
-    } catch {
+    } catch (e) {
+      console.error('Export failed:', e);
       toast.error('Failed to export. Try again.');
     } finally {
       setExporting('');

@@ -11,4 +11,3 @@ whitenoise==6.6.0
 cloudinary
 django-cloudinary-storage
 openpyxl
-reportlab
