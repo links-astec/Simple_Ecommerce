@@ -358,16 +358,21 @@ class OrdersByEmailView(APIView):
             for old_email in list(_email_codes):
                 if (timezone.now() - _email_codes[old_email]['ts']).total_seconds() > 600:
                     del _email_codes[old_email]
+            email_host = getattr(settings, 'EMAIL_HOST_USER', '')
+            if not email_host:
+                logger.warning('EMAIL_HOST_USER not configured — cannot send verification code')
+                return Response({'error': 'Email service is not configured. Please track your order using the reference number instead.'}, status=503)
             try:
                 send_mail(
-                    subject="Your verification code — Bel's Haven",
-                    message=f"Your order lookup code is: {code}\n\nThis code expires in 10 minutes.\n\n— Bel's Haven",
+                    subject="Your verification code - Bel's Haven",
+                    message=f"Your order lookup code is: {code}\n\nThis code expires in 10 minutes.\n\n- Bel's Haven",
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
                     fail_silently=False,
                 )
-            except Exception:
-                return Response({'error': 'Failed to send code. Try again.'}, status=500)
+            except Exception as e:
+                logger.exception('Failed to send verification email to %s: %s', email, str(e))
+                return Response({'error': f'Email failed: {str(e)}'}, status=500)
             return Response({'status': 'code_sent'})
 
         if action == 'verify':
