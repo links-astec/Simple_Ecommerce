@@ -382,7 +382,7 @@ class OrdersByEmailView(APIView):
                 return Response({'status': 'code_sent'})
             except Exception as e:
                 logger.exception('Email send failed: %s', e)
-                return Response({'error': 'Could not send email. Please use your order reference number to track instead.'}, status=500)
+                return Response({'error': f'Email error: {type(e).__name__}: {str(e)}'}, status=500)
 
         if action == 'verify':
             code = request.data.get('code', '').strip().upper()
