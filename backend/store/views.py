@@ -10,7 +10,7 @@ from django.core.validators import validate_email
 from django.db import transaction, models
 from django.http import HttpResponse, Http404, JsonResponse
 from django.utils import timezone
-from django.core.mail import send_mail
+from django.core.mail import send_mail as _django_send_mail
 from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.permissions import BasePermission
@@ -24,6 +24,36 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def send_email(subject, message, recipient_list, from_email=None, fail_silently=False):
+    brevo_key = getattr(settings, 'BREVO_API_KEY', '')
+    sender_name = getattr(settings, 'EMAIL_SENDER_NAME', "Bel's Haven")
+    sender_email = from_email or getattr(settings, 'EMAIL_SENDER_ADDRESS', '') or getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@belshaven.com')
+    if '<' in sender_email:
+        sender_email = sender_email.split('<')[1].rstrip('>')
+
+    if brevo_key:
+        resp = requests.post(
+            'https://api.brevo.com/v3/smtp/email',
+            headers={'api-key': brevo_key, 'Content-Type': 'application/json'},
+            json={
+                'sender': {'name': sender_name, 'email': sender_email},
+                'to': [{'email': e} for e in recipient_list],
+                'subject': subject,
+                'textContent': message,
+            },
+            timeout=15,
+        )
+        if resp.status_code >= 400:
+            err = resp.text
+            logger.error('Brevo email failed (%s): %s', resp.status_code, err)
+            if not fail_silently:
+                raise Exception(f'Email send failed: {err}')
+        return
+    _django_send_mail(subject=subject, message=message, from_email=from_email or settings.DEFAULT_FROM_EMAIL,
+                      recipient_list=recipient_list, fail_silently=fail_silently)
+
 
 ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -372,12 +402,10 @@ class OrdersByEmailView(APIView):
                     del _email_codes[k]
 
             try:
-                send_mail(
+                send_email(
                     subject="Your verification code - Bel's Haven",
                     message="Your order lookup code is: %s\n\nThis code expires in 10 minutes.\n\n- Bel's Haven" % code,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
-                    fail_silently=False,
                 )
                 return Response({'status': 'code_sent'})
             except Exception as e:
@@ -570,8 +598,8 @@ Validate your order on WhatsApp: {wa_url}
 With love, Bel's Haven 🌿
 """
     try:
-        send_mail(subject=f"Order Confirmed – {order.reference} | Bel's Haven", message=body,
-                  from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[order.customer_email], fail_silently=True)
+        send_email(subject=f"Order Confirmed - {order.reference} | Bel's Haven", message=body,
+                   recipient_list=[order.customer_email], fail_silently=True)
     except Exception:
         pass
 
@@ -887,12 +915,10 @@ class SendCustomerMessageView(APIView):
         except DjangoValidationError:
             return Response({'error': 'Invalid email address'}, status=400)
         try:
-            send_mail(
+            send_email(
                 subject=subject,
-                message=f"{message}\n\n— Bel's Haven",
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                message=f"{message}\n\n- Bel's Haven",
                 recipient_list=[email],
-                fail_silently=False,
             )
             logger.info('Admin sent message to %s', email)
             return Response({'status': 'sent'})
@@ -919,7 +945,7 @@ Notes: {order.notes or 'None'}
 Manage at: {settings.FRONTEND_URL}/manage
 """
     try:
-        send_mail(subject=f"🛍️ New Order: {order.reference} – GH₵{order.total_amount:,.2f}", message=body,
-                  from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[notify_email], fail_silently=True)
+        send_email(subject=f"New Order: {order.reference} - GH₵{order.total_amount:,.2f}", message=body,
+                   recipient_list=[notify_email], fail_silently=True)
     except Exception:
         pass

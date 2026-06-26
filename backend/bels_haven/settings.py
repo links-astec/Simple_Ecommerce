@@ -146,7 +146,13 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 100,
 }
 
-# Email
+# Email — uses Brevo HTTP API (Render blocks SMTP)
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+EMAIL_SENDER_NAME = os.getenv('EMAIL_SENDER_NAME', "Bel's Haven")
+EMAIL_SENDER_ADDRESS = os.getenv('EMAIL_SENDER_ADDRESS', os.getenv('EMAIL_HOST_USER', 'noreply@belshaven.com'))
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', '')
+
+# Fallback SMTP (for local dev)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
@@ -155,7 +161,6 @@ EMAIL_TIMEOUT = 10
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', '') or (f"Bel's Haven <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else 'noreply@belshaven.com')
-ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', '')
 
 # Paystack
 PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY', '')
