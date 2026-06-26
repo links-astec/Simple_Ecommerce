@@ -5,14 +5,14 @@ import dj_database_url
 
 load_dotenv()
 
-from corsheaders.defaults import default_headers, default_methods
+from corsheaders.defaults import default_headers
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "cache-control",
     "pragma",
     "x-admin-key",
 ]
-CORS_ALLOW_METHODS = list(default_methods)
+CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
 CORS_PREFLIGHT_MAX_AGE = 86400
 def env_list(name, default=''):
     value = os.getenv(name, default)
