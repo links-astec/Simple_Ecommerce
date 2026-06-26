@@ -340,55 +340,48 @@ _email_codes = {}
 
 class OrdersByEmailView(APIView):
     def post(self, request):
-        try:
-            return self._handle(request)
-        except Exception as e:
-            logger.exception('OrdersByEmailView error')
-            return Response({'error': str(e)}, status=500)
-
-    def _handle(self, request):
-        action = request.data.get('action', 'send_code')
+        action = request.data.get('action', '')
         email = request.data.get('email', '').strip().lower()
+
         if not email:
-            return Response({'error': 'Email is required'}, status=400)
+            return Response({'error': 'Email is required.'}, status=400)
         try:
             validate_email(email)
         except DjangoValidationError:
-            return Response({'error': 'Invalid email address'}, status=400)
+            return Response({'error': 'Invalid email address.'}, status=400)
 
         if action == 'send_code':
             if not Order.objects.filter(customer_email__iexact=email).exists():
                 return Response({'error': 'No orders found for this email.'}, status=404)
-            import secrets
-            code = secrets.token_hex(3).upper()
+
+            import secrets as _secrets
+            code = _secrets.token_hex(3).upper()
             _email_codes[email] = {'code': code, 'ts': timezone.now()}
-            for old_email in list(_email_codes):
-                if (timezone.now() - _email_codes[old_email]['ts']).total_seconds() > 600:
-                    del _email_codes[old_email]
-            email_host = getattr(settings, 'EMAIL_HOST_USER', '')
-            if not email_host:
-                logger.warning('EMAIL_HOST_USER not configured — cannot send verification code')
-                return Response({'error': 'Email service is not configured. Please track your order using the reference number instead.'}, status=503)
+
+            for k in list(_email_codes):
+                if (timezone.now() - _email_codes[k]['ts']).total_seconds() > 600:
+                    del _email_codes[k]
+
             try:
                 send_mail(
                     subject="Your verification code - Bel's Haven",
-                    message=f"Your order lookup code is: {code}\n\nThis code expires in 10 minutes.\n\n- Bel's Haven",
+                    message="Your order lookup code is: %s\n\nThis code expires in 10 minutes.\n\n- Bel's Haven" % code,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
                     fail_silently=False,
                 )
+                return Response({'status': 'code_sent'})
             except Exception as e:
-                logger.exception('Failed to send verification email to %s: %s', email, str(e))
-                return Response({'error': f'Email failed: {str(e)}'}, status=500)
-            return Response({'status': 'code_sent'})
+                logger.exception('Email send failed: %s', e)
+                return Response({'error': 'Could not send email. Please use your order reference number to track instead.'}, status=500)
 
         if action == 'verify':
             code = request.data.get('code', '').strip().upper()
             if not code:
-                return Response({'error': 'Code is required'}, status=400)
+                return Response({'error': 'Verification code is required.'}, status=400)
             entry = _email_codes.get(email)
             if not entry or entry['code'] != code:
-                return Response({'error': 'Invalid code. Please try again.'}, status=403)
+                return Response({'error': 'Invalid code.'}, status=403)
             if (timezone.now() - entry['ts']).total_seconds() > 600:
                 del _email_codes[email]
                 return Response({'error': 'Code expired. Request a new one.'}, status=403)
@@ -398,7 +391,7 @@ class OrdersByEmailView(APIView):
             ).prefetch_related('items').order_by('-created_at')
             return Response(OrderSerializer(orders, many=True).data)
 
-        return Response({'error': 'Invalid action'}, status=400)
+        return Response({'error': 'Invalid action. Use send_code or verify.'}, status=400)
 
 
 # ── Payment ───────────────────────────────────────────────────────────────────
@@ -511,6 +504,24 @@ def store_stats(request):
         'available_products': Product.objects.filter(status='active', product_type='available', parent__isnull=True).count(),
         'preorder_products': Product.objects.filter(status='active', product_type='preorder', parent__isnull=True).count(),
         'categories': Category.objects.count(),
+    })
+
+
+@api_view(['GET'])
+def email_check(request):
+    if not IsAdminKey().has_permission(request, None):
+        return Response({'error': 'Unauthorized'}, status=403)
+    host_user = getattr(settings, 'EMAIL_HOST_USER', '')
+    host = getattr(settings, 'EMAIL_HOST', '')
+    port = getattr(settings, 'EMAIL_PORT', '')
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '')
+    has_password = bool(getattr(settings, 'EMAIL_HOST_PASSWORD', ''))
+    return Response({
+        'EMAIL_HOST': host,
+        'EMAIL_PORT': port,
+        'EMAIL_HOST_USER': host_user,
+        'EMAIL_HOST_PASSWORD': '***set***' if has_password else '***NOT SET***',
+        'DEFAULT_FROM_EMAIL': from_email,
     })
 
 

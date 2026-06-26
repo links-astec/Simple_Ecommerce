@@ -62,7 +62,7 @@ export default function TrackOrderPage() {
   };
 
   const sendCode = async () => {
-    const e = email.trim().toLowerCase();
+    const e = email.trim();
     if (!e) { setError('Please enter your email address.'); return; }
     setLoading(true);
     setError('');
@@ -70,14 +70,14 @@ export default function TrackOrderPage() {
       await sendOrderLookupCode(e);
       setCodeSent(true);
     } catch (err) {
-      setError(err.response?.data?.error || 'Something went wrong. Please try again.');
+      setError(err.response?.data?.error || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const trackByEmail = async () => {
-    const e = email.trim().toLowerCase();
+    const e = email.trim();
     const c = verifyCode.trim();
     if (!c) { setError('Please enter the verification code.'); return; }
     setLoading(true);
@@ -94,7 +94,7 @@ export default function TrackOrderPage() {
         setCodeSent(false);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid code. Please try again.');
+      setError(err.response?.data?.error || 'Invalid code. Try again.');
     } finally {
       setLoading(false);
     }
@@ -172,12 +172,11 @@ export default function TrackOrderPage() {
 
         {mode === 'email' && codeSent && orders.length === 0 && (
           <div className="track-verify">
-            <p className="track-verify__msg">We sent a verification code to <strong>{email}</strong>. Enter it below.</p>
+            <p className="track-verify__msg">We sent a verification code to <strong>{email}</strong>. Check your inbox and enter it below.</p>
             <div className="track-search">
               <input
                 className="input-field track-search__input"
-                type="text"
-                placeholder="Enter 6-digit code"
+                placeholder="Enter code"
                 value={verifyCode}
                 onChange={e => { setVerifyCode(e.target.value.toUpperCase()); setError(''); }}
                 onKeyDown={e => e.key === 'Enter' && trackByEmail()}

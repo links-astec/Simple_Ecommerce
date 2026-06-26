@@ -13,6 +13,7 @@ urlpatterns = [
     path('products/<slug:slug>/', views.ProductDetailView.as_view(), name='product-detail'),
     path('stats/', views.store_stats, name='store-stats'),
     path('health/', health),
+    path('email-check/', views.email_check, name='email-check'),
 
     # Orders (GET public, PATCH admin-only)
     path('orders/', views.OrderCreateView.as_view(), name='order-create'),
