@@ -339,6 +339,15 @@ class OrderDetailView(APIView):
 _email_codes = {}
 
 class OrdersByEmailView(APIView):
+    def options(self, request, *args, **kwargs):
+        resp = HttpResponse(status=200)
+        origin = request.META.get('HTTP_ORIGIN', '*')
+        resp['Access-Control-Allow-Origin'] = origin
+        resp['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        resp['Access-Control-Allow-Headers'] = 'Content-Type, X-Admin-Key, Cache-Control, Pragma'
+        resp['Access-Control-Max-Age'] = '86400'
+        return resp
+
     def post(self, request):
         action = request.data.get('action', '')
         email = request.data.get('email', '').strip().lower()
