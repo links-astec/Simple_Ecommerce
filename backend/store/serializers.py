@@ -3,9 +3,19 @@ from rest_framework import serializers
 from .models import Category, Product, ProductImage, Order, OrderItem, SiteSettings
 
 
-def _absolute_image_url(request, url):
-    if url and url.startswith('http'):
+def _cloudinary_transform(url, width=None, quality='auto', fmt='auto'):
+    if not url or 'res.cloudinary.com' not in url:
         return url
+    if '/upload/' in url:
+        transforms = f'w_{width},' if width else ''
+        transforms += f'q_{quality},f_{fmt}'
+        return url.replace('/upload/', f'/upload/{transforms}/')
+    return url
+
+
+def _absolute_image_url(request, url, width=None):
+    if url and url.startswith('http'):
+        return _cloudinary_transform(url, width=width)
     if request:
         return request.build_absolute_uri(url)
     return url
@@ -56,13 +66,13 @@ class ProductListSerializer(serializers.ModelSerializer):
     def get_primary_image(self, obj):
         primary = obj.images.filter(is_primary=True).first() or obj.images.first()
         if primary:
-            return _absolute_image_url(self.context.get('request'), primary.image.url)
+            return _absolute_image_url(self.context.get('request'), primary.image.url, width=400)
         if obj.parent is None:
             first_variant = obj.variants.filter(status='active').first()
             if first_variant:
                 v_img = first_variant.images.filter(is_primary=True).first() or first_variant.images.first()
                 if v_img:
-                    return _absolute_image_url(self.context.get('request'), v_img.image.url)
+                    return _absolute_image_url(self.context.get('request'), v_img.image.url, width=400)
         return None
 
     def get_variant_count(self, obj):
@@ -97,11 +107,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'created_at', 'variant_label', 'parent', 'variants',
         ]
 
-    def _build_image_list(self, obj):
+    def _build_image_list(self, obj, width=800):
         request = self.context.get('request')
         images = []
         for img in obj.images.all():
-            url = _absolute_image_url(request, img.image.url)
+            url = _absolute_image_url(request, img.image.url, width=width)
             images.append({'id': img.id, 'url': url, 'alt_text': img.alt_text, 'is_primary': img.is_primary})
         return images
 
@@ -116,7 +126,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         result = []
         for v in variant_qs:
             primary_img = v.images.filter(is_primary=True).first() or v.images.first()
-            img_url = _absolute_image_url(request, primary_img.image.url) if primary_img else None
+            img_url = _absolute_image_url(request, primary_img.image.url, width=400) if primary_img else None
             result.append({
                 'id': str(v.id),
                 'slug': v.slug,
@@ -125,7 +135,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                 'shipping_fee': str(v.shipping_fee),
                 'stock_quantity': v.stock_quantity,
                 'primary_image': img_url,
-                'images': self._build_image_list(v),
+                'images': self._build_image_list(v, width=800),
                 'product_type': v.product_type,
                 'preorder_eta': v.preorder_eta,
                 'preorder_shipping_fee': str(v.preorder_shipping_fee),

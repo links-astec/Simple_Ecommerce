@@ -11,6 +11,8 @@ from django.db import transaction, models
 from django.http import HttpResponse, Http404, JsonResponse
 from django.utils import timezone
 from django.core.mail import send_mail as _django_send_mail
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.permissions import BasePermission
@@ -103,6 +105,10 @@ class CategoryListView(generics.ListCreateAPIView):
             return [IsAdminKey()]
         return []
 
+    @method_decorator(cache_page(120))
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
 
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
@@ -149,6 +155,11 @@ class ProductListView(generics.ListCreateAPIView):
         ctx = super().get_serializer_context()
         ctx['request'] = self.request
         return ctx
+
+    def get(self, request, *args, **kwargs):
+        if not IsAdminKey().has_permission(request, self):
+            return cache_page(120)(super().get)(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         from django.utils.text import slugify as django_slugify
