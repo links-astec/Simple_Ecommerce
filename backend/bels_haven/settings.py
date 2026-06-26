@@ -5,13 +5,15 @@ import dj_database_url
 
 load_dotenv()
 
-from corsheaders.defaults import default_headers
+from corsheaders.defaults import default_headers, default_methods
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "cache-control",
     "pragma",
     "x-admin-key",
 ]
+CORS_ALLOW_METHODS = list(default_methods)
+CORS_PREFLIGHT_MAX_AGE = 86400
 def env_list(name, default=''):
     value = os.getenv(name, default)
     if not value:
@@ -116,7 +118,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Production overrides
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
-    CORS_ALLOWED_ORIGIN_REGEXES = env_list('CORS_ALLOWED_ORIGIN_REGEXES')
+    CORS_ALLOWED_ORIGIN_REGEXES = env_list('CORS_ALLOWED_ORIGIN_REGEXES') or [r'^https://.*\.vercel\.app$']
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = False  # Render handles SSL
     SESSION_COOKIE_SECURE = True

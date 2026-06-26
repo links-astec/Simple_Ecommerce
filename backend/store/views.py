@@ -340,6 +340,13 @@ _email_codes = {}
 
 class OrdersByEmailView(APIView):
     def post(self, request):
+        try:
+            return self._handle(request)
+        except Exception as e:
+            logger.exception('OrdersByEmailView error')
+            return Response({'error': str(e)}, status=500)
+
+    def _handle(self, request):
         action = request.data.get('action', 'send_code')
         email = request.data.get('email', '').strip().lower()
         if not email:
