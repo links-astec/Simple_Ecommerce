@@ -971,6 +971,7 @@ class SendCampaignView(APIView):
 
         sent = 0
         errors = 0
+        last_error = None
         for email in recipients:
             try:
                 send_email(subject=subject, message='', recipient_list=[email], html_message=html)
@@ -978,9 +979,15 @@ class SendCampaignView(APIView):
             except Exception as e:
                 logger.error('Campaign send failed for %s: %s', email, e)
                 errors += 1
+                last_error = str(e)
 
         logger.info('Email campaign sent: %d/%d recipients', sent, len(recipients))
-        return Response({'sent': sent, 'errors': errors, 'total': len(recipients)})
+        return Response({
+            'sent': sent,
+            'errors': errors,
+            'total': len(recipients),
+            'error_detail': last_error,
+        })
 
 
 def _send_admin_notification(order):
