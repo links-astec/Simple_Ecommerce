@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Package, Clock, Shield, MessageCircle, Star, ShoppingBag, Gem, Shirt, Lamp, Droplets, Scissors, Footprints } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
+import NewsletterSection from '../components/NewsletterSection';
 import { getProducts, getCategories } from '../api';
 import useLiveRefresh from '../useLiveRefresh';
 import './HomePage.css';
@@ -213,6 +214,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Newsletter */}
+      <NewsletterSection />
 
       {/* WhatsApp contact */}
       {whatsappNumber && (

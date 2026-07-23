@@ -19,7 +19,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Category, Product, ProductImage, Order, OrderItem, SiteSettings
+from .models import Category, Product, ProductImage, Order, OrderItem, SiteSettings, Subscriber
 from .serializers import (
     CategorySerializer, ProductListSerializer, ProductDetailSerializer,
     OrderCreateSerializer, OrderSerializer
@@ -36,11 +36,16 @@ def send_email(subject, message, recipient_list, from_email=None, fail_silently=
         sender_email = sender_email.split('<')[1].rstrip('>')
 
     if brevo_key:
+        text_content = (message or '').strip() or (
+            "This email contains HTML content. "
+            "Please open it in an email client that supports HTML, "
+            "or visit https://belshaven.com to see our latest collections."
+        )
         payload = {
             'sender': {'name': sender_name, 'email': sender_email},
             'to': [{'email': e} for e in recipient_list],
             'subject': subject,
-            'textContent': message or ' ',
+            'textContent': text_content,
         }
         if html_message:
             payload['htmlContent'] = html_message
@@ -941,6 +946,35 @@ class SendCustomerMessageView(APIView):
             logger.exception('Failed to send message to %s', email)
             return Response({'error': 'Failed to send message. Please try again.'}, status=500)
 
+class SubscribeView(APIView):
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'error': 'Email is required'}, status=400)
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            return Response({'error': 'Invalid email address'}, status=400)
+        subscriber, created = Subscriber.objects.get_or_create(email=email)
+        if not created and not subscriber.is_active:
+            subscriber.is_active = True
+            subscriber.save(update_fields=['is_active'])
+        return Response({'status': 'subscribed'})
+
+
+class SubscriberListView(APIView):
+    permission_classes = [IsAdminKey]
+
+    def get(self, request):
+        subs = Subscriber.objects.filter(is_active=True).values('id', 'email', 'created_at')
+        return Response({'count': subs.count(), 'results': list(subs)})
+
+    def delete(self, request):
+        email = request.data.get('email', '').strip().lower()
+        Subscriber.objects.filter(email=email).update(is_active=False)
+        return Response({'status': 'removed'})
+
+
 class SendCampaignView(APIView):
     permission_classes = [IsAdminKey]
 
@@ -955,7 +989,9 @@ class SendCampaignView(APIView):
         if not html:
             return Response({'error': 'Email content is required'}, status=400)
 
-        if recipient_type == 'all':
+        if recipient_type == 'subscribers':
+            recipients = list(Subscriber.objects.filter(is_active=True).values_list('email', flat=True))
+        elif recipient_type == 'all':
             recipients = list(Order.objects.values_list('customer_email', flat=True).distinct())
         else:
             if not specific_email:

@@ -34,6 +34,7 @@ export const getOrder = (reference) => API.get(`/orders/${reference}/`);
 export const sendOrderLookupCode = (email) => API.post('/orders/lookup/', { action: 'send_code', email });
 export const verifyOrderLookupCode = (email, code) => API.post('/orders/lookup/', { action: 'verify', email, code });
 export const getSiteSettings = () => cachedGet('settings', () => API.get('/settings/'));
+export const subscribeNewsletter = (email) => API.post('/subscribe/', { email });
 
 export function invalidateCache(prefix) {
   if (prefix) {

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Type, AlignLeft, MousePointer, Package, Minus, Image,
   ChevronUp, ChevronDown, Trash2, Send, Eye, Edit3,
   Users, Mail, Copy, Smartphone, Monitor, Zap, Share2,
+  Bell, X, RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import API from '../api';
@@ -228,6 +229,59 @@ function BlockCard({ block, isFirst, isLast, onUpdate, onRemove, onMoveUp, onMov
   );
 }
 
+// ─── Subscriber List ─────────────────────────────────────────────────────────
+function SubscriberList() {
+  const [subscribers, setSubscribers] = useState([]);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    API.get('/subscribers/')
+      .then(res => { setSubscribers(res.data.results || []); setCount(res.data.count || 0); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const remove = async (email) => {
+    await API.delete('/subscribers/', { data: { email } });
+    setSubscribers(prev => prev.filter(s => s.email !== email));
+    setCount(prev => prev - 1);
+    toast.success('Subscriber removed');
+  };
+
+  return (
+    <div className="ec-subs">
+      <div className="ec-subs__header">
+        <div className="ec-subs__title">
+          <Bell size={14} />
+          <span>Newsletter Subscribers</span>
+          <span className="ec-subs__count">{count}</span>
+        </div>
+        <button className="ec-icon-btn" onClick={load} title="Refresh"><RefreshCw size={13} /></button>
+      </div>
+
+      {loading ? (
+        <p className="ec-subs__loading">Loading…</p>
+      ) : subscribers.length === 0 ? (
+        <p className="ec-subs__empty">No subscribers yet.</p>
+      ) : (
+        <div className="ec-subs__list">
+          {subscribers.map(s => (
+            <div key={s.id} className="ec-sub-row">
+              <span className="ec-sub-row__email">{s.email}</span>
+              <span className="ec-sub-row__date">{new Date(s.created_at).toLocaleDateString()}</span>
+              <button className="ec-icon-btn ec-icon-btn--del" onClick={() => remove(s.email)} title="Remove"><X size={12} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function EmailCampaignTab() {
   const [subject, setSubject] = useState("New from Bel's Haven ✨");
@@ -404,12 +458,19 @@ export default function EmailCampaignTab() {
                 <input type="radio" name="rcpt" value="all" checked={recipientType === 'all'} onChange={() => setRecipientType('all')} />
                 <Users size={13} /> All Customers
               </label>
+              <label className={`ec-rcpt-opt ${recipientType === 'subscribers' ? 'active' : ''}`}>
+                <input type="radio" name="rcpt" value="subscribers" checked={recipientType === 'subscribers'} onChange={() => setRecipientType('subscribers')} />
+                <Bell size={13} /> Subscribers
+              </label>
             </div>
             {recipientType === 'specific' && (
               <input className="input-field" style={{ marginTop: 10 }} type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="recipient@example.com" />
             )}
             {recipientType === 'all' && (
               <div className="ec-warning">⚠ Sends to every customer who placed an order. Test to yourself first.</div>
+            )}
+            {recipientType === 'subscribers' && (
+              <div className="ec-warning ec-warning--info">Sends to all active newsletter subscribers.</div>
             )}
           </div>
 
@@ -450,6 +511,8 @@ export default function EmailCampaignTab() {
           </div>
         </div>
       </div>
+
+      <SubscriberList />
     </div>
   );
 }

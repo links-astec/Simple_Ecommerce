@@ -36,4 +36,6 @@ urlpatterns = [
     path('product-images/', views.ProductImageUploadView.as_view(), name='product-image-upload'),
     path('send-message/', views.SendCustomerMessageView.as_view(), name='send-message'),
     path('send-campaign/', views.SendCampaignView.as_view(), name='send-campaign'),
+    path('subscribe/', views.SubscribeView.as_view(), name='subscribe'),
+    path('subscribers/', views.SubscriberListView.as_view(), name='subscribers'),
 ]
