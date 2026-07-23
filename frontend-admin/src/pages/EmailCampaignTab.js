@@ -40,6 +40,22 @@ const THEMES = {
   },
 };
 
+const CUSTOM_THEME_DEFAULT = {
+  label: 'Custom', swatches: ['#ffffff', '#c9a84c'],
+  outerBg: '#f0f0f0', cardBg: '#ffffff', headerBg: '#111111',
+  border: '#e0e0e0', heading: '#111111', text: '#333333',
+  muted: '#888888', accent: '#c9a84c', accentText: '#ffffff', logo: '#c9a84c',
+};
+
+const CUSTOM_PICKERS = [
+  { key: 'accent',    label: 'Accent',         hint: 'Buttons, banners, highlights' },
+  { key: 'cardBg',   label: 'Card Background', hint: 'Main email body background' },
+  { key: 'headerBg', label: 'Header BG',       hint: 'Logo header background' },
+  { key: 'heading',  label: 'Heading Text',    hint: 'Large text color' },
+  { key: 'text',     label: 'Body Text',       hint: 'Paragraph text color' },
+  { key: 'accentText', label: 'Button Text',   hint: 'Text on accent-colored buttons' },
+];
+
 // ─── Block definitions ────────────────────────────────────────────────────────
 const BLOCK_META = {
   banner:  { label: 'Banner',       color: '#e67e22', icon: Zap },
@@ -69,8 +85,8 @@ function esc(str) {
 }
 
 // ─── Email HTML generator ─────────────────────────────────────────────────────
-function generateEmailHTML(subject, blocks, themeKey) {
-  const t = THEMES[themeKey] || THEMES['noir-gold'];
+function generateEmailHTML(subject, blocks, themeObj) {
+  const t = themeObj || THEMES['noir-gold'];
 
   const rows = blocks.map(b => {
     if (b.type === 'banner') {
@@ -293,6 +309,7 @@ export default function EmailCampaignTab() {
     { id: uid(), type: 'divider' },
     { id: uid(), type: 'social', instagram: '', whatsapp: '', website: 'https://belshaven.com' },
   ]);
+  const [customTheme, setCustomTheme] = useState({ ...CUSTOM_THEME_DEFAULT });
   const [recipientType, setRecipientType] = useState('specific');
   const [testEmail, setTestEmail] = useState('');
   const [sending, setSending] = useState(false);
@@ -300,7 +317,13 @@ export default function EmailCampaignTab() {
   const [activePane, setActivePane] = useState('edit');
   const [device, setDevice] = useState('desktop');
 
-  const html = generateEmailHTML(subject, blocks, theme);
+  const activeTheme = theme === 'custom' ? customTheme : (THEMES[theme] || THEMES['noir-gold']);
+  const html = generateEmailHTML(subject, blocks, activeTheme);
+
+  const setCustomColor = (key, value) => setCustomTheme(prev => ({ ...prev, [key]: value,
+    ...(key === 'accent' ? { logo: value, swatches: [prev.swatches[0], value] } : {}),
+    ...(key === 'cardBg' ? { swatches: [value, prev.swatches[1]] } : {}),
+  }));
 
   const addBlock = (type) => setBlocks(prev => [...prev, { id: uid(), type, ...BLOCK_DEFAULTS[type] }]);
 
@@ -404,7 +427,35 @@ export default function EmailCampaignTab() {
                   {theme === key && <span className="ec-theme-check">✓</span>}
                 </button>
               ))}
+              <button className={`ec-theme-btn ${theme === 'custom' ? 'active' : ''}`} onClick={() => setTheme('custom')} title="Custom colors">
+                <span className="ec-theme-swatch ec-theme-swatch--custom" style={{ background: `linear-gradient(135deg, ${customTheme.swatches[0]} 50%, ${customTheme.swatches[1]} 50%)` }} />
+                <span className="ec-theme-name">Custom</span>
+                {theme === 'custom' && <span className="ec-theme-check">✓</span>}
+              </button>
             </div>
+
+            {theme === 'custom' && (
+              <div className="ec-custom-colors">
+                <p className="ec-custom-colors__label">Customize your colors</p>
+                <div className="ec-color-grid">
+                  {CUSTOM_PICKERS.map(({ key, label, hint }) => (
+                    <label key={key} className="ec-color-row">
+                      <input
+                        type="color"
+                        className="ec-color-input"
+                        value={customTheme[key]}
+                        onChange={e => setCustomColor(key, e.target.value)}
+                      />
+                      <div className="ec-color-info">
+                        <span className="ec-color-name">{label}</span>
+                        <span className="ec-color-hint">{hint}</span>
+                      </div>
+                      <span className="ec-color-hex">{customTheme[key]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="ec-section">
@@ -465,9 +516,6 @@ export default function EmailCampaignTab() {
             </div>
             {recipientType === 'specific' && (
               <input className="input-field" style={{ marginTop: 10 }} type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="recipient@example.com" />
-            )}
-            {recipientType === 'all' && (
-              <div className="ec-warning">⚠ Sends to every customer who placed an order. Test to yourself first.</div>
             )}
             {recipientType === 'subscribers' && (
               <div className="ec-warning ec-warning--info">Sends to all active newsletter subscribers.</div>

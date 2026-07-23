@@ -1,7 +1,7 @@
 .nl-section {
   position: relative;
   padding: 100px 24px;
-  background: #060402;
+  background: #faf6ee;
   overflow: hidden;
   text-align: center;
 }
@@ -12,30 +12,30 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 600px;
-  height: 400px;
-  background: radial-gradient(ellipse at center, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.04) 45%, transparent 70%);
+  width: 700px;
+  height: 450px;
+  background: radial-gradient(ellipse at center, rgba(201,168,76,0.18) 0%, rgba(201,168,76,0.06) 50%, transparent 75%);
   pointer-events: none;
 }
 
-/* Subtle repeating diamond texture */
+/* Subtle repeating diamond dot texture */
 .nl-section::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(201,168,76,0.06) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: radial-gradient(rgba(180,140,60,0.1) 1px, transparent 1px);
+  background-size: 28px 28px;
   pointer-events: none;
 }
 
-/* Top & bottom border lines in gold */
+/* Top accent line */
 .nl-section::after {
   content: '';
   position: absolute;
   top: 0; left: 50%; transform: translateX(-50%);
   width: 1px;
   height: 60px;
-  background: linear-gradient(to bottom, transparent, rgba(201,168,76,0.5));
+  background: linear-gradient(to bottom, transparent, rgba(180,140,60,0.4));
 }
 
 .nl-container {
@@ -82,14 +82,14 @@
   font-size: clamp(2.2rem, 5vw, 3.2rem);
   font-weight: 300;
   letter-spacing: 0.04em;
-  color: #f0e8d8;
+  color: #1a1208;
   margin: 0 0 18px;
   line-height: 1.1;
 }
 
 .nl-sub {
   font-size: 0.9rem;
-  color: rgba(200,191,176,0.8);
+  color: rgba(60,45,25,0.65);
   line-height: 1.75;
   margin: 0 0 36px;
   font-family: var(--font-body, 'Jost', sans-serif);
@@ -103,16 +103,16 @@
 .nl-input-wrap {
   display: flex;
   align-items: stretch;
-  border: 1px solid rgba(201,168,76,0.35);
+  border: 1px solid rgba(160,120,50,0.3);
   border-radius: 2px;
   overflow: hidden;
   transition: border-color 0.3s, box-shadow 0.3s;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.65);
 }
 
 .nl-input-wrap:focus-within {
-  border-color: rgba(201,168,76,0.75);
-  box-shadow: 0 0 0 3px rgba(201,168,76,0.08), 0 0 20px rgba(201,168,76,0.06);
+  border-color: rgba(160,120,50,0.7);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.12), 0 0 24px rgba(201,168,76,0.08);
 }
 
 .nl-input {
@@ -124,12 +124,12 @@
   font-family: var(--font-body, 'Jost', sans-serif);
   font-size: 0.88rem;
   letter-spacing: 0.04em;
-  color: #f0e8d8;
+  color: #1a1208;
   min-width: 0;
 }
 
 .nl-input::placeholder {
-  color: rgba(180,170,155,0.45);
+  color: rgba(80,60,30,0.35);
   letter-spacing: 0.06em;
 }
 
@@ -194,7 +194,7 @@
   margin-top: 16px;
   font-size: 0.68rem;
   letter-spacing: 0.1em;
-  color: rgba(150,140,125,0.6);
+  color: rgba(80,60,30,0.45);
   font-family: var(--font-body, 'Jost', sans-serif);
 }
 
@@ -230,16 +230,29 @@
   font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 300;
   letter-spacing: 0.05em;
-  color: #f0e8d8;
+  color: #1a1208;
   margin: 0 0 12px;
 }
 
 .nl-success__sub {
   font-size: 0.88rem;
-  color: rgba(200,191,176,0.75);
+  color: rgba(60,45,25,0.6);
   line-height: 1.8;
   margin: 0;
   font-family: var(--font-body, 'Jost', sans-serif);
+}
+
+/* ── Already-subscribed state ─────────────────────────────────────────────── */
+.nl-already {
+  animation: nl-success-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.nl-already__icon {
+  font-size: 2.6rem;
+  color: var(--gold, #c9a84c);
+  margin-bottom: 20px;
+  animation: nl-icon-pulse 2.5s ease infinite;
+  text-shadow: 0 0 24px rgba(201,168,76,0.4);
 }
 
 /* ── Sparkle burst animation ──────────────────────────────────────────────── */

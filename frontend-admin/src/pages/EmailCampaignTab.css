@@ -190,6 +190,88 @@
   z-index: 1;
 }
 
+.ec-theme-swatch--custom {
+  border: 1px dashed rgba(201,168,76,0.4);
+}
+
+/* ── Custom color pickers ────────────────────────────────────────────────────── */
+.ec-custom-colors {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.ec-custom-colors__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+}
+
+.ec-color-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.ec-color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.ec-color-row:last-child { border-bottom: none; }
+.ec-color-row:hover { background: var(--surface); }
+
+.ec-color-input {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+  flex-shrink: 0;
+}
+
+.ec-color-input::-webkit-color-swatch-wrapper { padding: 0; border-radius: 6px; overflow: hidden; }
+.ec-color-input::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+.ec-color-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ec-color-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ec-color-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.ec-color-hex {
+  font-size: 0.72rem;
+  font-family: 'Courier New', monospace;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
 /* ── Block list ──────────────────────────────────────────────────────────────── */
 .ec-blocks-list {
   display: flex;

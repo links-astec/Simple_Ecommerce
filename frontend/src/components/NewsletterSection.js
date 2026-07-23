@@ -4,7 +4,7 @@ import './NewsletterSection.css';
 
 export default function NewsletterSection() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle'); // idle | loading | success | error
+  const [status, setStatus] = useState('idle'); // idle | loading | success | already | error
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -13,8 +13,12 @@ export default function NewsletterSection() {
     setStatus('loading');
     setError('');
     try {
-      await subscribeNewsletter(email.trim());
-      setStatus('success');
+      const res = await subscribeNewsletter(email.trim());
+      if (res.data?.status === 'already_subscribed') {
+        setStatus('already');
+      } else {
+        setStatus('success');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
       setStatus('error');
@@ -26,7 +30,26 @@ export default function NewsletterSection() {
       <div className="nl-glow" />
 
       <div className="nl-container">
-        {status !== 'success' ? (
+        {status === 'success' && (
+          <div className="nl-success">
+            {[...Array(12)].map((_, i) => (
+              <span key={i} className={`nl-spark nl-spark--${i + 1}`} />
+            ))}
+            <div className="nl-success__icon">✦</div>
+            <h2 className="nl-success__title">You're in the circle</h2>
+            <p className="nl-success__sub">Thank you for joining us.<br />Expect something beautiful soon.</p>
+          </div>
+        )}
+
+        {status === 'already' && (
+          <div className="nl-success nl-already">
+            <div className="nl-already__icon">◈</div>
+            <h2 className="nl-success__title">You're already in</h2>
+            <p className="nl-success__sub">This email is already part of our circle.<br />We'll keep you updated with everything beautiful.</p>
+          </div>
+        )}
+
+        {status !== 'success' && status !== 'already' && (
           <div className="nl-content">
             <div className="nl-diamond">◆</div>
             <p className="nl-eyebrow">Exclusive Access</p>
@@ -58,15 +81,6 @@ export default function NewsletterSection() {
             </form>
 
             <p className="nl-note">No spam, ever. Unsubscribe anytime.</p>
-          </div>
-        ) : (
-          <div className="nl-success">
-            {[...Array(12)].map((_, i) => (
-              <span key={i} className={`nl-spark nl-spark--${i + 1}`} />
-            ))}
-            <div className="nl-success__icon">✦</div>
-            <h2 className="nl-success__title">You're in the circle</h2>
-            <p className="nl-success__sub">Thank you for joining us.<br />Expect something beautiful soon.</p>
           </div>
         )}
       </div>

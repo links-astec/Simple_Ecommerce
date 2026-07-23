@@ -956,7 +956,9 @@ class SubscribeView(APIView):
         except DjangoValidationError:
             return Response({'error': 'Invalid email address'}, status=400)
         subscriber, created = Subscriber.objects.get_or_create(email=email)
-        if not created and not subscriber.is_active:
+        if not created:
+            if subscriber.is_active:
+                return Response({'status': 'already_subscribed'})
             subscriber.is_active = True
             subscriber.save(update_fields=['is_active'])
         return Response({'status': 'subscribed'})
