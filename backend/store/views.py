@@ -28,7 +28,7 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
-def send_email(subject, message, recipient_list, from_email=None, fail_silently=False):
+def send_email(subject, message, recipient_list, from_email=None, fail_silently=False, html_message=None):
     brevo_key = getattr(settings, 'BREVO_API_KEY', '')
     sender_name = getattr(settings, 'EMAIL_SENDER_NAME', "Bel's Haven")
     sender_email = from_email or getattr(settings, 'EMAIL_SENDER_ADDRESS', '') or getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@belshaven.com')
@@ -36,15 +36,18 @@ def send_email(subject, message, recipient_list, from_email=None, fail_silently=
         sender_email = sender_email.split('<')[1].rstrip('>')
 
     if brevo_key:
+        payload = {
+            'sender': {'name': sender_name, 'email': sender_email},
+            'to': [{'email': e} for e in recipient_list],
+            'subject': subject,
+            'textContent': message or ' ',
+        }
+        if html_message:
+            payload['htmlContent'] = html_message
         resp = requests.post(
             'https://api.brevo.com/v3/smtp/email',
             headers={'api-key': brevo_key, 'Content-Type': 'application/json'},
-            json={
-                'sender': {'name': sender_name, 'email': sender_email},
-                'to': [{'email': e} for e in recipient_list],
-                'subject': subject,
-                'textContent': message,
-            },
+            json=payload,
             timeout=15,
         )
         if resp.status_code >= 400:
@@ -54,7 +57,8 @@ def send_email(subject, message, recipient_list, from_email=None, fail_silently=
                 raise Exception(f'Email send failed: {err}')
         return
     _django_send_mail(subject=subject, message=message, from_email=from_email or settings.DEFAULT_FROM_EMAIL,
-                      recipient_list=recipient_list, fail_silently=fail_silently)
+                      recipient_list=recipient_list, fail_silently=fail_silently,
+                      html_message=html_message)
 
 
 ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
@@ -936,6 +940,48 @@ class SendCustomerMessageView(APIView):
         except Exception:
             logger.exception('Failed to send message to %s', email)
             return Response({'error': 'Failed to send message. Please try again.'}, status=500)
+
+class SendCampaignView(APIView):
+    permission_classes = [IsAdminKey]
+
+    def post(self, request):
+        subject = request.data.get('subject', '').strip()
+        html = request.data.get('html', '').strip()
+        recipient_type = request.data.get('recipient_type', 'specific')
+        specific_email = request.data.get('email', '').strip()
+
+        if not subject:
+            return Response({'error': 'Subject is required'}, status=400)
+        if not html:
+            return Response({'error': 'Email content is required'}, status=400)
+
+        if recipient_type == 'all':
+            recipients = list(Order.objects.values_list('customer_email', flat=True).distinct())
+        else:
+            if not specific_email:
+                return Response({'error': 'Recipient email is required'}, status=400)
+            try:
+                validate_email(specific_email)
+            except DjangoValidationError:
+                return Response({'error': 'Invalid email address'}, status=400)
+            recipients = [specific_email]
+
+        if not recipients:
+            return Response({'error': 'No recipients found'}, status=400)
+
+        sent = 0
+        errors = 0
+        for email in recipients:
+            try:
+                send_email(subject=subject, message='', recipient_list=[email], html_message=html)
+                sent += 1
+            except Exception as e:
+                logger.error('Campaign send failed for %s: %s', email, e)
+                errors += 1
+
+        logger.info('Email campaign sent: %d/%d recipients', sent, len(recipients))
+        return Response({'sent': sent, 'errors': errors, 'total': len(recipients)})
+
 
 def _send_admin_notification(order):
     notify_email = getattr(settings, 'NOTIFY_EMAIL', None) or getattr(settings, 'ADMIN_EMAIL', None)

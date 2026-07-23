@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import API, { adminLogin, getAdminToken } from '../api';
 import AiAssistantTab from './AiAssistantTab';
+import EmailCampaignTab from './EmailCampaignTab';
 import './AdminPage.css';
 
 // ─── Confirm Modal ──────────────────────────────────────────────────────────
@@ -160,6 +161,7 @@ export default function AdminPage() {
               { id: 'categories', icon: Tag, label: 'Categories' },
               { id: 'stats', icon: BarChart2, label: 'Overview' },
               { id: 'ai', icon: Sparkles, label: 'AI Assistant' },
+              { id: 'email', icon: Mail, label: 'Email' },
               { id: 'settings', icon: Settings, label: 'Settings' },
             ].map(({ id, icon: Icon, label }) => (
               <button
@@ -185,6 +187,7 @@ export default function AdminPage() {
         {tab === 'categories' && <CategoriesTab />}
         {tab === 'stats' && <StatsTab />}
         {tab === 'ai' && <AiAssistantTab />}
+        {tab === 'email' && <EmailCampaignTab />}
         {tab === 'settings' && <SettingsTab />}
       </main>
     </div>
