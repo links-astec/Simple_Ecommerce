@@ -30,6 +30,11 @@ export default function ShopPage() {
   }, [typeFilter, categoryFilter, search]);
 
   useEffect(() => {
+    document.title = "Shop | Bel's Haven";
+    return () => { document.title = "Bel's Haven"; };
+  }, []);
+
+  useEffect(() => {
     getCategories().then(res => setCategories(res.data.results || res.data));
   }, []);
 

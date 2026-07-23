@@ -43,7 +43,7 @@ export default function Footer() {
             <h4>Help</h4>
             <ul>
               <li><a href={whatsapp ? `https://wa.me/${whatsapp}` : '#'} target="_blank" rel="noreferrer">Contact Us</a></li>
-              <li><Link to="/shop">Track Order</Link></li>
+              <li><Link to="/track-order">Track Order</Link></li>
             </ul>
           </div>
         </div>

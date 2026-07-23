@@ -37,6 +37,13 @@ export default function ProductPage() {
     loadProduct();
   }, [slug, loadProduct]);
 
+  useEffect(() => {
+    if (product) {
+      document.title = `${product.name} | Bel's Haven`;
+      return () => { document.title = "Bel's Haven"; };
+    }
+  }, [product]);
+
   useLiveRefresh(loadProduct, 30000);
 
   if (loading) return (

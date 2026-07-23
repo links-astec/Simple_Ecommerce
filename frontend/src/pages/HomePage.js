@@ -45,6 +45,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => { loadHome(); }, [loadHome]);
+  useEffect(() => { document.title = "Bel's Haven | Fashion, Beauty & Accessories in Ghana"; }, []);
   useLiveRefresh(loadHome, 300000);
 
   const whatsappNumber = process.env.REACT_APP_WHATSAPP_NUMBER || '';

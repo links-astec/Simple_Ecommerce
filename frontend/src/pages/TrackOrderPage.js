@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Package, MapPin, Clock, CheckCircle, Truck, Box, XCircle, MessageCircle, Mail } from 'lucide-react';
 import { getOrder, sendOrderLookupCode, verifyOrderLookupCode } from '../api';
@@ -27,6 +27,11 @@ function updateSavedOrderStatus(ref, newStatus) {
 }
 
 export default function TrackOrderPage() {
+  useEffect(() => {
+    document.title = "Track Order | Bel's Haven";
+    return () => { document.title = "Bel's Haven"; };
+  }, []);
+
   const [mode, setMode] = useState('reference');
   const [reference, setReference] = useState('');
   const [email, setEmail] = useState('');

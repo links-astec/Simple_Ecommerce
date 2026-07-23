@@ -120,6 +120,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
     CORS_ALLOWED_ORIGIN_REGEXES = env_list('CORS_ALLOWED_ORIGIN_REGEXES') or [r'^https://.*\.vercel\.app$']
+    CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS') or env_list('CORS_ALLOWED_ORIGINS')
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = False  # Render handles SSL
     SESSION_COOKIE_SECURE = True
